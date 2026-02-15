@@ -65,20 +65,19 @@ setx FFMPEG_PATH "$ff" /M
 
 **Alternativa local (sin variables):** coloca los ejecutables en el proyecto:
 ```
-interfaz/
+src/main/
 ├── Libs/
 │   ├── yt-dlp.exe
 │   └── ffmpeg-<version>-full_build/
 │       └── ffmpeg-<version>-full_build/
 │           └── bin/
 │               └── ffmpeg.exe
-├── src/
-├── pom.xml
-└── ...
 ```
 Rutas por defecto utilizadas por la app:
-- `Libs/yt-dlp.exe`
-- `Libs/ffmpeg-2024-09-26-git-f43916e217-full_build/ffmpeg-2024-09-26-git-f43916e217-full_build/bin/ffmpeg.exe`
+- `src/main/Libs/yt-dlp.exe` o `Libs/yt-dlp.exe` en la raíz
+- `src/main/Libs/.../bin/ffmpeg.exe` o la ruta equivalente en `Libs/`
+
+La app detecta automáticamente `yt-dlp` y `ffmpeg` en `PATH`. Si no están en `PATH`, usa `YT_DLP_PATH`/`FFMPEG_PATH`. Si tampoco existen, busca en `src/main/Libs` y luego en `Libs/` en la raíz.
 
 ### 3. Ejecutar la aplicación
 Usa el wrapper de Maven para iniciar la aplicación sin instalar nada extra:

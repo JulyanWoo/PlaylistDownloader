@@ -91,7 +91,18 @@
             
             <Label fx:id="currentSongLabel" text="🎵 Preparando descarga..." styleClass="current-song-label" />
             
-             
+            <VBox spacing="8.0" styleClass="progress-container">
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="progress-header">
+                     <children>
+                        <Label fx:id="currentProgressLabel" text="Descargando..." styleClass="progress-label" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="currentPercentageLabel" text="0.0%" styleClass="percentage-label" />
+                     </children>
+                  </HBox>
+                  <ProgressBar fx:id="currentProgressBar" prefWidth="200.0" progress="0.0" maxWidth="Infinity" styleClass="progress-bar" prefHeight="12.0" />
+               </children>
+            </VBox>
 
          </children>
       </VBox>
