@@ -34,10 +34,20 @@ Puedes instalarlas en el sistema o colocarlas manualmente en rutas locales. La a
 ### 1. Clonar el repositorio
 ```bash
 git clone <URL-DEL-REPOSITORIO>
-cd PlaylistDownloader/interfaz
+cd PlaylistDownloader
 ```
 
-### 2. Instalar dependencias
+### 2. Requisitos previos
+
+Instala Java JDK 17 y configura la variable de entorno `JAVA_HOME`.
+
+Verifica la instalación con:
+```bash
+java -version
+```
+Si ves el mensaje `JAVA_HOME not found`, instala JDK 17 y configura `JAVA_HOME` antes de continuar.
+
+### 3. Instalar dependencias
 
 **Windows (recomendado con winget):**
 ```powershell
@@ -75,18 +85,18 @@ Usa el wrapper de Maven para iniciar la aplicación sin instalar nada extra:
 
 **En Windows:**
 ```powershell
-./mvnw.cmd javafx:run
+./mvnw.cmd clean javafx:run
 ```
 
 **En Linux/macOS:**
 ```bash
-./mvnw javafx:run
+./mvnw clean javafx:run
 ```
 
 ### 4. Generar ejecutable (Opcional)
 Para crear un archivo JAR con todas las dependencias:
 ```powershell
-./mvnw.cmd package
+./mvnw.cmd -DskipTests package
 ```
 El archivo se generará en `target/interfaz-1.2-SNAPSHOT-shaded.jar`.
 
