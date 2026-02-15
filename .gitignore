@@ -36,3 +36,36 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Logs y dumps
+logs/
+*.log
+hs_err_pid*
+replay_pid*
+*.jfr
+*.hprof
+
+# Configuración local
+user-config.properties
+
+# IDEs
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/dictionaries
+.idea/caches/
+
+# Salidas locales
+out/
+
+# Maven artefacto temporal
+dependency-reduced-pom.xml
+
+# Dependencias externas locales
+Libs/
