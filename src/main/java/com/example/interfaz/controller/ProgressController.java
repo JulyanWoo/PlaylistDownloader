@@ -95,9 +95,9 @@ public class ProgressController {
      */
     public void updateCurrentProgress(double progress, String details) {
         Platform.runLater(() -> {
-            currentProgressBar.setProgress(progress);
-            currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
-            currentProgressLabel.setText(details);
+            if (currentProgressBar != null) currentProgressBar.setProgress(progress);
+            if (currentPercentageLabel != null) currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
+            if (currentProgressLabel != null) currentProgressLabel.setText(details);
             
             LOGGER.debug("Progreso actual actualizado: {:.1f}% - {}", progress * 100, details);
         });
@@ -108,11 +108,11 @@ public class ProgressController {
      */
     public void updateCurrentProgress(String message, double progress) {
         Platform.runLater(() -> {
-            currentProgressLabel.setText(message);
+            if (currentProgressLabel != null) currentProgressLabel.setText(message);
             
             if (progress >= 0 && progress <= 1) {
-                currentProgressBar.setProgress(progress);
-                currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
+                if (currentProgressBar != null) currentProgressBar.setProgress(progress);
+                if (currentPercentageLabel != null) currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
             }
             
             LOGGER.debug("Progreso actual actualizado con mensaje: {}", message);

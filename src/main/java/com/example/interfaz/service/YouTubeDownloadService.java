@@ -5,12 +5,14 @@ import com.example.interfaz.model.Song;
 import com.example.interfaz.util.FileUtils;
 import javafx.concurrent.Task;
 
-
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.Path;
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,16 +32,67 @@ public class YouTubeDownloadService implements DownloadService {
 
     private static String getYtDlpPath() {
         String env = System.getenv(YT_DLP_ENV);
-        if (env != null && !env.isEmpty()) return env;
+        if (env != null && !env.isEmpty() && new File(env).exists()) return env;
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_YT_DLP_RELATIVE);
-        return relative.toString();
+        if (Files.exists(relative)) return relative.toString();
+        Path srcMainRelative = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs", getYtDlpExecutableName());
+        if (Files.exists(srcMainRelative)) return srcMainRelative.toString();
+        String underSrc = findInDir(Paths.get(System.getProperty("user.dir"), "src", "main", "Libs"), getYtDlpExecutableName());
+        if (underSrc != null) return underSrc;
+        String exe = getYtDlpExecutableName();
+        String found = findInPath(exe);
+        if (found != null) return found;
+        return exe;
     }
 
     private static String getFfmpegPath() {
         String env = System.getenv(FFMPEG_ENV);
-        if (env != null && !env.isEmpty()) return env;
+        if (env != null && !env.isEmpty() && new File(env).exists()) return env;
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_FFMPEG_RELATIVE);
-        return relative.toString();
+        if (Files.exists(relative)) return relative.toString();
+        Path srcMainLibs = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs");
+        String foundLocal = findInDir(srcMainLibs, getFfmpegExecutableName());
+        if (foundLocal != null) return foundLocal;
+        String exe = getFfmpegExecutableName();
+        String found = findInPath(exe);
+        if (found != null) return found;
+        return exe;
+    }
+    
+    private static String getYtDlpExecutableName() {
+        String os = System.getProperty("os.name").toLowerCase();
+        return os.contains("win") ? "yt-dlp.exe" : "yt-dlp";
+    }
+    
+    private static String getFfmpegExecutableName() {
+        String os = System.getProperty("os.name").toLowerCase();
+        return os.contains("win") ? "ffmpeg.exe" : "ffmpeg";
+    }
+    
+    private static String findInPath(String exe) {
+        String path = System.getenv("PATH");
+        if (path == null || path.isEmpty()) return null;
+        String[] dirs = path.split(File.pathSeparator);
+        for (String d : dirs) {
+            File f = new File(d, exe);
+            if (f.exists() && f.isFile()) return f.getAbsolutePath();
+        }
+        return null;
+    }
+    
+    private static String findInDir(Path dir, String exe) {
+        if (dir == null || !Files.exists(dir)) return null;
+        try (var stream = Files.walk(dir, 4)) {
+            var opt = stream.filter(Files::isRegularFile).filter(p -> p.getFileName().toString().equalsIgnoreCase(exe)).findFirst();
+            return opt.map(Path::toString).orElse(null);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+    
+    private static boolean isExistingPath(String p) {
+        if (p == null || p.isEmpty()) return false;
+        return new File(p).exists();
     }
     
     private final ProgressReporter progressReporter;
@@ -85,16 +138,23 @@ public class YouTubeDownloadService implements DownloadService {
                 }
                 
                 ProcessBuilder processBuilder = new ProcessBuilder();
-                processBuilder.command(
-                    getYtDlpPath(),
-                    "-x",
-                    "--audio-format", "mp3",
-                    "--ffmpeg-location", getFfmpegPath(),
-                    "-o", Paths.get(outputDirectory, "%(title)s.%(ext)s").toString(),
-                    "--playlist-start", String.valueOf(startFromVideo),
-                    "--no-overwrites",
-                    playlistUrl
-                );
+                List<String> cmd = new ArrayList<>();
+                cmd.add(getYtDlpPath());
+                cmd.add("-x");
+                cmd.add("--audio-format");
+                cmd.add("mp3");
+                String ffmpegPath = getFfmpegPath();
+                if (isExistingPath(ffmpegPath)) {
+                    cmd.add("--ffmpeg-location");
+                    cmd.add(ffmpegPath);
+                }
+                cmd.add("-o");
+                cmd.add(Paths.get(outputDirectory, "%(title)s.%(ext)s").toString());
+                cmd.add("--playlist-start");
+                cmd.add(String.valueOf(startFromVideo));
+                cmd.add("--no-overwrites");
+                cmd.add(playlistUrl);
+                processBuilder.command(cmd);
                 
                 currentProcess = processBuilder.start();
                 
@@ -145,15 +205,21 @@ public class YouTubeDownloadService implements DownloadService {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder();
-                processBuilder.command(
-                    getYtDlpPath(),
-                    "-x",
-                    "--audio-format", "mp3",
-                    "--ffmpeg-location", getFfmpegPath(),
-                    "-o", FileUtils.getMusicDirectory() + File.separator + "%(title)s.%(ext)s",
-                    "--no-overwrites",
-                    url
-                );
+                List<String> cmd = new ArrayList<>();
+                cmd.add(getYtDlpPath());
+                cmd.add("-x");
+                cmd.add("--audio-format");
+                cmd.add("mp3");
+                String ffmpegPath = getFfmpegPath();
+                if (isExistingPath(ffmpegPath)) {
+                    cmd.add("--ffmpeg-location");
+                    cmd.add(ffmpegPath);
+                }
+                cmd.add("-o");
+                cmd.add(FileUtils.getMusicDirectory() + File.separator + "%(title)s.%(ext)s");
+                cmd.add("--no-overwrites");
+                cmd.add(url);
+                processBuilder.command(cmd);
                 
                 currentProcess = processBuilder.start();
                 
@@ -309,15 +375,21 @@ public class YouTubeDownloadService implements DownloadService {
                 try {
                     ProcessBuilder processBuilder = new ProcessBuilder();
                     String outputDir = outputPath.isEmpty() ? FileUtils.getMusicDirectory() : outputPath;
-                    processBuilder.command(
-                        getYtDlpPath(),
-                        "-x",
-                        "--audio-format", "mp3",
-                        "--ffmpeg-location", getFfmpegPath(),
-                        "-o", outputDir + File.separator + "%(title)s.%(ext)s",
-                        "--no-overwrites",
-                        url
-                    );
+                    List<String> cmd = new ArrayList<>();
+                    cmd.add(getYtDlpPath());
+                    cmd.add("-x");
+                    cmd.add("--audio-format");
+                    cmd.add("mp3");
+                    String ffmpegPath = getFfmpegPath();
+                    if (isExistingPath(ffmpegPath)) {
+                        cmd.add("--ffmpeg-location");
+                        cmd.add(ffmpegPath);
+                    }
+                    cmd.add("-o");
+                    cmd.add(outputDir + File.separator + "%(title)s.%(ext)s");
+                    cmd.add("--no-overwrites");
+                    cmd.add(url);
+                    processBuilder.command(cmd);
 
                     
                     currentProcess = processBuilder.start();
