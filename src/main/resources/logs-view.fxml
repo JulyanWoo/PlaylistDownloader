@@ -4,13 +4,19 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.TextFlow?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.interfaz.controller.LogsController" styleClass="main-container" stylesheets="@styles.css" spacing="15.0" prefWidth="800.0" prefHeight="600.0">
    <children>
       <!-- Título de la ventana -->
       <HBox spacing="10" alignment="CENTER_LEFT" styleClass="top-bar">
-         <FontIcon iconLiteral="mdi2c-console" iconSize="24" styleClass="youtube-logo" />
+         <ImageView fitWidth="24" fitHeight="24" pickOnBounds="true" preserveRatio="true">
+            <image>
+               <Image url="@app.png" />
+            </image>
+         </ImageView>
          <Label text="Consola de Logs" styleClass="app-title" style="-fx-font-size: 20px;" />
       </HBox>
       

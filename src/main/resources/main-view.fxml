@@ -3,6 +3,8 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox fx:id="rootNode" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.interfaz.controller.MainController" styleClass="main-container" stylesheets="@styles.css" spacing="15.0" prefWidth="700.0" prefHeight="650.0">
@@ -10,10 +12,17 @@
       <!-- Barra superior con Título y Switch de Modo Claro/Oscuro -->
       <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="top-bar">
          <children>
-            <FontIcon iconLiteral="mdi2y-youtube" iconSize="32" styleClass="youtube-logo" />
+            <ImageView fitWidth="32" fitHeight="32" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@app.png" />
+               </image>
+            </ImageView>
             <Label text="YouTube Downloader" styleClass="app-title" />
             <Region HBox.hgrow="ALWAYS" />
             <Button fx:id="themeToggleButton" mnemonicParsing="false" onAction="#onToggleTheme" styleClass="theme-toggle-button">
+               <tooltip>
+                  <Tooltip text="Cambiar Tema Claro/Oscuro" />
+               </tooltip>
                <graphic>
                   <FontIcon fx:id="themeIcon" iconLiteral="mdi2m-moon-waning-crescent" iconSize="18" />
                </graphic>

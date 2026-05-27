@@ -33,6 +33,11 @@ public class Main extends Application {
             }
             
             stage.setTitle(APP_TITLE);
+            try {
+                stage.getIcons().add(new javafx.scene.image.Image(Main.class.getResourceAsStream("/app.png")));
+            } catch (Exception e) {
+                System.err.println("No se pudo cargar el icono del stage: " + e.getMessage());
+            }
             stage.setScene(scene);
             stage.setMinWidth(600);
             stage.setMinHeight(400);
