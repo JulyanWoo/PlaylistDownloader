@@ -30,11 +30,32 @@ public class YouTubeDownloadService implements DownloadService {
     private static final String DEFAULT_YT_DLP_RELATIVE = "Libs/yt-dlp.exe";
     private static final String DEFAULT_FFMPEG_RELATIVE = "Libs/ffmpeg-2024-09-26-git-f43916e217-full_build/ffmpeg-2024-09-26-git-f43916e217-full_build/bin/ffmpeg.exe";
 
+    private static File getJarFolder() {
+        try {
+            return new File(YouTubeDownloadService.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private static String getYtDlpPath() {
         String env = System.getenv(YT_DLP_ENV);
         if (env != null && !env.isEmpty() && new File(env).exists()) return env;
+        
+        // 1. Check relative to user.dir
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_YT_DLP_RELATIVE);
         if (Files.exists(relative)) return relative.toString();
+        
+        // 2. Check relative to JAR location (useful when launched from shortcuts)
+        File jarFolder = getJarFolder();
+        if (jarFolder != null) {
+            File jarRelative = new File(jarFolder, DEFAULT_YT_DLP_RELATIVE);
+            if (jarRelative.exists()) return jarRelative.getAbsolutePath();
+            
+            File jarParentRelative = new File(jarFolder.getParentFile(), DEFAULT_YT_DLP_RELATIVE);
+            if (jarParentRelative.exists()) return jarParentRelative.getAbsolutePath();
+        }
+        
         Path srcMainRelative = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs", getYtDlpExecutableName());
         if (Files.exists(srcMainRelative)) return srcMainRelative.toString();
         String underSrc = findInDir(Paths.get(System.getProperty("user.dir"), "src", "main", "Libs"), getYtDlpExecutableName());
@@ -48,8 +69,21 @@ public class YouTubeDownloadService implements DownloadService {
     private static String getFfmpegPath() {
         String env = System.getenv(FFMPEG_ENV);
         if (env != null && !env.isEmpty() && new File(env).exists()) return env;
+        
+        // 1. Check relative to user.dir
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_FFMPEG_RELATIVE);
         if (Files.exists(relative)) return relative.toString();
+        
+        // 2. Check relative to JAR location
+        File jarFolder = getJarFolder();
+        if (jarFolder != null) {
+            File jarRelative = new File(jarFolder, DEFAULT_FFMPEG_RELATIVE);
+            if (jarRelative.exists()) return jarRelative.getAbsolutePath();
+            
+            File jarParentRelative = new File(jarFolder.getParentFile(), DEFAULT_FFMPEG_RELATIVE);
+            if (jarParentRelative.exists()) return jarParentRelative.getAbsolutePath();
+        }
+        
         Path srcMainLibs = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs");
         String foundLocal = findInDir(srcMainLibs, getFfmpegExecutableName());
         if (foundLocal != null) return foundLocal;
@@ -155,6 +189,7 @@ public class YouTubeDownloadService implements DownloadService {
                 cmd.add("--no-overwrites");
                 cmd.add(playlistUrl);
                 processBuilder.command(cmd);
+                processBuilder.redirectErrorStream(true);
                 
                 currentProcess = processBuilder.start();
                 
@@ -390,6 +425,7 @@ public class YouTubeDownloadService implements DownloadService {
                     cmd.add("--no-overwrites");
                     cmd.add(url);
                     processBuilder.command(cmd);
+                    processBuilder.redirectErrorStream(true);
 
                     
                     currentProcess = processBuilder.start();
