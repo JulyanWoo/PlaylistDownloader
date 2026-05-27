@@ -14,7 +14,7 @@ import java.io.IOException;
 public class Main extends Application {
     
     private static final String MAIN_VIEW_FXML = "/main-view.fxml";
-    private static final String APP_TITLE = "YouTube Downloader - Descargador de Música";
+    private static final String APP_TITLE = "YouTube Downloader";
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 600;
     

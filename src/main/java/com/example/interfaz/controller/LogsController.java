@@ -90,11 +90,11 @@ public class LogsController implements Initializable {
             Text textNode = new Text(line + "\n");
             
             if (line.contains("[ExtractAudio]")) {
-                textNode.setFill(Color.web("#28a745"));
+                textNode.setFill(Color.web("#00ff88")); // Neon mint green
             } else if (line.contains("[download]")) {
-                textNode.setFill(Color.web("#dc3545")); 
+                textNode.setFill(Color.web("#ff0055")); // Neon red
             } else {
-                textNode.setFill(Color.web("#ffffff"));
+                textNode.setFill(Color.web("#e2e2e8")); // Modern soft white
             }
             
             logsTextFlow.getChildren().add(textNode);

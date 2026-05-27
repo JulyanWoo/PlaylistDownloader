@@ -16,6 +16,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +34,11 @@ public class MainController {
     
     private QueueController queueController;
     private ProgressController progressController;
+    
+    // Theme switching elements
+    @FXML private VBox rootNode;
+    @FXML private FontIcon themeIcon;
+    private boolean isDarkMode = true;
     
     // Input elements
     @FXML private TextField inputField;
@@ -522,5 +528,31 @@ public class MainController {
                 }
             }
         });
+    }
+
+    @FXML
+    private void onToggleTheme() {
+        isDarkMode = !isDarkMode;
+        if (rootNode != null) {
+            Scene scene = rootNode.getScene();
+            if (scene != null) {
+                var styleClass = scene.getRoot().getStyleClass();
+                if (isDarkMode) {
+                    styleClass.remove("light-theme");
+                    if (themeIcon != null) {
+                        themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
+                    }
+                    LOGGER.info("Cambiado a Modo Oscuro");
+                } else {
+                    if (!styleClass.contains("light-theme")) {
+                        styleClass.add("light-theme");
+                    }
+                    if (themeIcon != null) {
+                        themeIcon.setIconLiteral("mdi2s-sun-horizontal");
+                    }
+                    LOGGER.info("Cambiado a Modo Claro");
+                }
+            }
+        }
     }
 }
