@@ -62,7 +62,7 @@ public class LogsController implements Initializable {
         logService = LogService.getInstance();
         setupLogsTextArea();
         loadLogs();
-        
+
         startAutoRefresh();
     }
 
@@ -79,24 +79,24 @@ public class LogsController implements Initializable {
 
     private void applyFiltersAndColors() {
         if (allLogLines == null) return;
-        
+
         List<String> filteredLogs = allLogLines.stream()
             .filter(this::shouldShowLog)
             .collect(Collectors.toList());
-        
+
         logsTextFlow.getChildren().clear();
-        
+
         for (String line : filteredLogs) {
             Text textNode = new Text(line + "\n");
-            
+
             if (line.contains("[ExtractAudio]")) {
-                textNode.setFill(Color.web("#00ff88")); // Neon mint green
+                textNode.setFill(Color.web("#00ff88")); 
             } else if (line.contains("[download]")) {
-                textNode.setFill(Color.web("#ff0055")); // Neon red
+                textNode.setFill(Color.web("#ff0055")); 
             } else {
-                textNode.setFill(Color.web("#e2e2e8")); // Modern soft white
+                textNode.setFill(Color.web("#e2e2e8")); 
             }
-            
+
             logsTextFlow.getChildren().add(textNode);
         }
     }
@@ -167,11 +167,11 @@ public class LogsController implements Initializable {
         fileChooser.setTitle("Guardar Logs");
         fileChooser.setInitialFileName("logs_" + 
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".txt");
-        
+
         FileChooser.ExtensionFilter extFilter = 
             new FileChooser.ExtensionFilter("Archivos de texto (*.txt)", "*.txt");
         fileChooser.getExtensionFilters().add(extFilter);
-        
+
         File file = fileChooser.showSaveDialog(stage);
         if (file != null) {
             try (FileWriter writer = new FileWriter(file)) {
