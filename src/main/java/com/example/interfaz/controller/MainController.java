@@ -548,7 +548,7 @@ public class MainController {
                         styleClass.add("light-theme");
                     }
                     if (themeIcon != null) {
-                        themeIcon.setIconLiteral("mdi2s-sun-horizontal");
+                        themeIcon.setIconLiteral("mdi2w-weather-sunny");
                     }
                     LOGGER.info("Cambiado a Modo Claro");
                 }
