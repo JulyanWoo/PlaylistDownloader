@@ -3,12 +3,8 @@ package com.example.interfaz.controller;
 import javafx.scene.control.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Gestor de estados de la interfaz de usuario
- * Responsable de manejar la habilitación/deshabilitación y visibilidad de componentes
- */
 public class UIStateManager {
-    
+
     private TextField inputField;
     private Button addButton;
     private Button startButton;
@@ -17,14 +13,11 @@ public class UIStateManager {
     private Button clearQueueButton;
     private Button removeSelectedButton;
     private ListView<String> queueListView;
-    
+
     private final AtomicBoolean isDownloading = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private final AtomicBoolean shouldStop = new AtomicBoolean(false);
-    
-    /**
-     * Constructor que inicializa el gestor con los componentes de la UI
-     */
+
     public UIStateManager(TextField inputField, Button addButton, Button startButton,
                          Button pauseButton, Button cancelButton, Button clearQueueButton,
                          Button removeSelectedButton, ListView<String> queueListView) {
@@ -36,52 +29,41 @@ public class UIStateManager {
         this.clearQueueButton = clearQueueButton;
         this.removeSelectedButton = removeSelectedButton;
         this.queueListView = queueListView;
-        
+
         initializeUI();
     }
-    
-    /**
-     * Inicializa el estado por defecto de la UI
-     */
+
     private void initializeUI() {
         pauseButton.setVisible(false);
         cancelButton.setVisible(false);
         pauseButton.setText("⏸ Pausar");
     }
-    
-    /**
-     * Actualiza el estado de la interfaz según el estado de descarga
-     * @param downloading true si está descargando
-     */
+
     public void updateDownloadState(boolean downloading) {
         isDownloading.set(downloading);
-        
+
         addButton.setDisable(downloading && !isPaused.get());
         startButton.setDisable(downloading);
         clearQueueButton.setDisable(downloading);
         removeSelectedButton.setDisable(downloading);
-        
+
         pauseButton.setVisible(downloading);
         pauseButton.setDisable(!downloading);
         cancelButton.setVisible(downloading);
         cancelButton.setDisable(!downloading);
-        
+
         inputField.setDisable(downloading && !isPaused.get());
         queueListView.setDisable(false);
-        
+
         if (!downloading) {
             pauseButton.setText("⏸ Pausar");
             isPaused.set(false);
         }
     }
-    
-    /**
-     * Actualiza el estado de pausa
-     * @param paused true si está pausado
-     */
+
     public void updatePauseState(boolean paused) {
         isPaused.set(paused);
-        
+
         if (isDownloading.get()) {
             if (paused) {
                 pauseButton.setText("▶️ Reanudar");
@@ -94,10 +76,7 @@ public class UIStateManager {
             }
         }
     }
-    
-    /**
-     * Habilita todos los controles (estado inicial)
-     */
+
     public void enableAllControls() {
         addButton.setDisable(false);
         startButton.setDisable(false);
@@ -105,42 +84,35 @@ public class UIStateManager {
         removeSelectedButton.setDisable(false);
         inputField.setDisable(false);
         queueListView.setDisable(false);
-        
+
         pauseButton.setVisible(false);
         cancelButton.setVisible(false);
-        
+
         isDownloading.set(false);
         isPaused.set(false);
     }
-    
-    // Getters para los estados
+
     public boolean isDownloading() {
         return isDownloading.get();
     }
-    
+
     public boolean isPaused() {
         return isPaused.get();
     }
-    
+
     public AtomicBoolean getIsDownloadingAtomic() {
         return isDownloading;
     }
-    
+
     public AtomicBoolean getIsPausedAtomic() {
         return isPaused;
     }
-    
-    /**
-     * Establece el estado de pausa
-     */
+
     public void setPausedState(boolean paused) {
         isPaused.set(paused);
         updatePauseState(paused);
     }
-    
-    /**
-     * Establece el estado de descarga
-     */
+
     public void setDownloadingState(boolean downloading) {
         isDownloading.set(downloading);
         if (!downloading) {
@@ -148,22 +120,13 @@ public class UIStateManager {
         }
         updateDownloadState(downloading);
     }
-    
-    /**
-     * Establece si se debe detener
-     */
+
     public void setShouldStop(boolean shouldStop) {
         this.shouldStop.set(shouldStop);
     }
-    
-    /**
-     * Verifica si se debe detener
-     */
+
     public boolean shouldStop() {
         return shouldStop.get();
     }
-    
-
-    
 
 }

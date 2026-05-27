@@ -33,14 +33,14 @@ public class LogService {
     public void startCapturing() {
         if (!isCapturing) {
             isCapturing = true;
-            
+
             PrintStream customOut = new PrintStream(new OutputStream() {
                 private StringBuilder buffer = new StringBuilder();
-                
+
                 @Override
                 public void write(int b) throws IOException {
                     originalOut.write(b);
-                    
+
                     char c = (char) b;
                     if (c == '\n') {
                         String line = buffer.toString();
@@ -53,14 +53,14 @@ public class LogService {
                     }
                 }
             });
-            
+
             PrintStream customErr = new PrintStream(new OutputStream() {
                 private StringBuilder buffer = new StringBuilder();
-                
+
                 @Override
                 public void write(int b) throws IOException {
                     originalErr.write(b);
-                    
+
                     char c = (char) b;
                     if (c == '\n') {
                         String line = buffer.toString();
@@ -73,10 +73,10 @@ public class LogService {
                     }
                 }
             });
-            
+
             System.setOut(customOut);
             System.setErr(customErr);
-            
+
             addLog("[SYSTEM] LogService iniciado - Captura de logs activada");
         }
     }
@@ -94,7 +94,7 @@ public class LogService {
         String timestamp = LocalDateTime.now().format(formatter);
         String logEntry = String.format("[%s] %s", timestamp, message);
         logs.add(logEntry);
-        
+
         if (logs.size() > 1000) {
             logs.remove(0);
         }
@@ -126,7 +126,7 @@ public class LogService {
                    "- Salida de la consola\n\n" +
                    "Los logs se actualizan automáticamente cada 2 segundos.";
         }
-        
+
         StringBuilder sb = new StringBuilder();
         for (String log : logs) {
             sb.append(log).append("\n");
