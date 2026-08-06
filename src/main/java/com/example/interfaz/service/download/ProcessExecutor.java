@@ -43,10 +43,6 @@ public class ProcessExecutor implements AutoCloseable {
 
     private volatile Process currentProcess;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Public API
-    // ──────────────────────────────────────────────────────────────────────────
-
     public boolean execute(List<String> cmd,
                            Consumer<String> lineProcessor,
                            Consumer<String> logNotifier) throws IOException, InterruptedException {
@@ -70,10 +66,13 @@ public class ProcessExecutor implements AutoCloseable {
         ScheduledFuture<?> watchdogFuture = null;
 
         try {
+            LOGGER.info("[DIAG] Executing command: {}", String.join(" ", cmd));
+
             ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectErrorStream(true); // merge stderr → prevents OS pipe buffer deadlock
+            pb.redirectErrorStream(true);
 
             process = pb.start();
+            LOGGER.info("[DIAG] Process started (pid={})", process.pid());
             synchronized (this) {
                 this.currentProcess = process;
             }
@@ -84,7 +83,6 @@ public class ProcessExecutor implements AutoCloseable {
                 return false;
             }
 
-            // ── Inactivity watchdog ──────────────────────────────────────────
             lastActivityMs.set(System.currentTimeMillis());
             final Process procRef = process;
             watchdogFuture = watchdog.scheduleAtFixedRate(() -> {
@@ -98,26 +96,28 @@ public class ProcessExecutor implements AutoCloseable {
                 }
             }, INACTIVITY_TIMEOUT_SECONDS, INACTIVITY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-            // ── Read stdout (merged with stderr) ────────────────────────────
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
 
                 String line;
+                int lineCount = 0;
                 while ((line = reader.readLine()) != null && !shouldStop.get()) {
+                    lineCount++;
                     lastActivityMs.set(System.currentTimeMillis());
+                    LOGGER.debug("[DIAG] stdout[{}]: {}", lineCount, line);
                     handlePauseState();
                     if (shouldStop.get()) break;
                     notifySafely(logNotifier, line);
                     notifySafely(lineProcessor, line);
                 }
+                LOGGER.info("[DIAG] Read loop ended. Lines read: {}, shouldStop={}", lineCount, shouldStop.get());
             }
 
-            // ── Wait for process exit ────────────────────────────────────────
             int exitCode;
             if (process.isAlive()) {
                 boolean finished = process.waitFor(10, TimeUnit.SECONDS);
                 if (!finished) {
-                    LOGGER.warn("Process did not exit in 10 s — forcing kill");
+                    LOGGER.warn("[DIAG] Process did not exit in 10 s — forcing kill");
                     process.destroyForcibly();
                     process.waitFor(2, TimeUnit.SECONDS);
                 }
@@ -128,10 +128,13 @@ public class ProcessExecutor implements AutoCloseable {
 
             boolean success = (exitCode == 0) && !shouldStop.get();
 
+            LOGGER.info("[DIAG] Process finished. exitCode={}, shouldStop={}, success={}",
+                    exitCode, shouldStop.get(), success);
+
             if (success) {
                 notifySafely(logNotifier, "Download completed successfully");
             } else if (shouldStop.get()) {
-                notifySafely(logNotifier, "Download cancelled or timed out");
+                notifySafely(logNotifier, "Download cancelled or timed out (exitCode=" + exitCode + ")");
             } else {
                 notifySafely(logNotifier, "Download error (exit code: " + exitCode + ")");
             }
@@ -144,10 +147,6 @@ public class ProcessExecutor implements AutoCloseable {
             resetState(process);
         }
     }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // Pause / Resume / Stop
-    // ──────────────────────────────────────────────────────────────────────────
 
     public void pause() {
         if (!isAlive()) return;
@@ -191,10 +190,6 @@ public class ProcessExecutor implements AutoCloseable {
         LOGGER.info("Process stopped");
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // State helpers
-    // ──────────────────────────────────────────────────────────────────────────
-
     public boolean isAlive() {
         Process proc = this.currentProcess;
         return proc != null && proc.isAlive();
@@ -208,10 +203,6 @@ public class ProcessExecutor implements AutoCloseable {
         stop();
         clearState();
     }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────────────────────────────────
 
     private void notifySafely(Consumer<String> consumer, String message) {
         if (consumer == null) return;
