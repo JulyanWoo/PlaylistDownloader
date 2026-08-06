@@ -129,92 +129,16 @@
                </children>
             </VBox>
 
-            <!-- StackPane para Vistas Dinámicas (Cola, Descargas, Logs) -->
+            <!-- StackPane para Vistas Dinámicas Incluidas -->
             <StackPane VBox.vgrow="ALWAYS">
                <children>
+                  <!-- Sub-vista 1: Cola de Espera (Queue View) -->
+                  <fx:include fx:id="queueView" source="queue-view.fxml" />
 
-                  <!-- Vista 1: Cola de Espera (Queue View) -->
-                  <VBox fx:id="queueSection" spacing="12.0" styleClass="card-panel" VBox.vgrow="ALWAYS">
-                     <children>
-                        <HBox alignment="CENTER_LEFT" spacing="12.0">
-                           <children>
-                              <FontIcon iconLiteral="mdi2p-playlist-music" iconSize="18" />
-                              <Label fx:id="queueCountLabel" text="Cola: 0 elementos" styleClass="card-title" />
-                              <Region HBox.hgrow="ALWAYS" />
-                              <Button fx:id="removeSelectedButton" mnemonicParsing="false" onAction="#onRemoveSelected" text="Eliminar" styleClass="button, danger">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2t-trash-can" iconSize="14" />
-                                 </graphic>
-                              </Button>
-                              <Button fx:id="clearQueueButton" mnemonicParsing="false" onAction="#onClearQueue" text="Limpiar Todo" styleClass="button">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2b-broom" iconSize="14" />
-                                 </graphic>
-                              </Button>
-                           </children>
-                        </HBox>
-                        <ListView fx:id="queueListView" styleClass="list-view" VBox.vgrow="ALWAYS" />
-                     </children>
-                  </VBox>
+                  <!-- Sub-vista 2: Progreso de Descarga (Progress View) -->
+                  <fx:include fx:id="progressView" source="progress-view.fxml" />
 
-                  <!-- Vista 2: Progreso de Descarga (Downloads View) -->
-                  <VBox fx:id="progressSection" spacing="12.0" styleClass="card-panel" visible="false" managed="false" VBox.vgrow="ALWAYS">
-                     <children>
-                        <HBox alignment="CENTER_LEFT" spacing="12.0">
-                           <children>
-                              <FontIcon iconLiteral="mdi2p-progress-download" iconSize="18" />
-                              <Label text="Progreso de Descargas en Curso" styleClass="card-title" />
-                              <Label fx:id="downloadSpeedLabel" text="0.0 MB/s" styleClass="speed-badge" />
-                              <Region HBox.hgrow="ALWAYS" />
-                              <Button fx:id="pauseButton" mnemonicParsing="false" onAction="#onPauseDownload" text="Pausar" styleClass="button, warning">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2p-pause" iconSize="14" />
-                                 </graphic>
-                              </Button>
-                              <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#onCancelDownload" text="Cancelar" styleClass="button, danger">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2c-close-circle" iconSize="14" />
-                                 </graphic>
-                              </Button>
-                           </children>
-                        </HBox>
-
-                        <!-- Tarjeta de Progreso de Playlist/Lista -->
-                        <VBox styleClass="progress-card">
-                           <children>
-                              <HBox alignment="CENTER_LEFT">
-                                 <children>
-                                    <Label fx:id="overallProgressLabel" text="Progreso General de Playlist" styleClass="card-subtitle" />
-                                    <Region HBox.hgrow="ALWAYS" />
-                                    <Label fx:id="overallPercentageLabel" text="0%" styleClass="card-title" />
-                                 </children>
-                              </HBox>
-                              <ProgressBar fx:id="overallProgressBar" progress="0.0" maxWidth="Infinity" styleClass="progress-bar, accent" prefHeight="10.0" />
-                           </children>
-                        </VBox>
-
-                        <!-- Tarjeta de Canción Actual -->
-                        <VBox styleClass="progress-card">
-                           <children>
-                              <Label fx:id="currentSongLabel" text="Esperando inicio de pista..." styleClass="card-title" wrapText="true">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2m-music" iconSize="16" />
-                                 </graphic>
-                              </Label>
-                              <HBox alignment="CENTER_LEFT">
-                                 <children>
-                                    <Label fx:id="currentProgressLabel" text="Descargando..." styleClass="card-subtitle" />
-                                    <Region HBox.hgrow="ALWAYS" />
-                                    <Label fx:id="currentPercentageLabel" text="0.0%" styleClass="card-title" />
-                                 </children>
-                              </HBox>
-                              <ProgressBar fx:id="currentProgressBar" progress="0.0" maxWidth="Infinity" styleClass="progress-bar, success" prefHeight="10.0" />
-                           </children>
-                        </VBox>
-                     </children>
-                  </VBox>
-
-                  <!-- Vista 3: Logs / Consola (Logs View) -->
+                  <!-- Sub-vista 3: Logs / Consola -->
                   <VBox fx:id="logsSection" spacing="12.0" styleClass="card-panel" visible="false" managed="false" VBox.vgrow="ALWAYS">
                      <children>
                         <HBox alignment="CENTER_LEFT" spacing="12.0">
@@ -232,7 +156,6 @@
                         <Label text="Haz clic en el botón superior para inspeccionar el historial completo de logs de la aplicación en tiempo real." styleClass="card-subtitle" wrapText="true" />
                      </children>
                   </VBox>
-
                </children>
             </StackPane>
 

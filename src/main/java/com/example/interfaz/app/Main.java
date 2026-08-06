@@ -1,6 +1,7 @@
 package com.example.interfaz.app;
 
 import atlantafx.base.theme.PrimerDark;
+import com.example.interfaz.factory.ServiceFactory;
 import com.example.interfaz.service.LogService;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -45,6 +46,7 @@ public class Main extends Application {
 
             stage.setOnCloseRequest(event -> {
                 LogService.log("Aplicación cerrada por el usuario");
+                ServiceFactory.getInstance().shutdown();
                 LogService.getInstance().stopCapturing();
                 System.exit(0);
             });
@@ -58,8 +60,12 @@ public class Main extends Application {
         }
     }
 
-    public static void main(String[] args) {
+    @Override
+    public void stop() {
+        ServiceFactory.getInstance().shutdown();
+    }
 
+    public static void main(String[] args) {
         launch(args);
     }
 

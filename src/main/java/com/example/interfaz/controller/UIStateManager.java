@@ -1,18 +1,21 @@
 package com.example.interfaz.controller;
 
-import javafx.scene.control.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 
 public class UIStateManager {
 
-    private TextField inputField;
-    private Button addButton;
-    private Button startButton;
-    private Button pauseButton;
-    private Button cancelButton;
-    private Button clearQueueButton;
-    private Button removeSelectedButton;
-    private ListView<String> queueListView;
+    private final TextField inputField;
+    private final Button addButton;
+    private final Button startButton;
+    private final Button pauseButton;
+    private final Button cancelButton;
+    private final Button clearQueueButton;
+    private final Button removeSelectedButton;
+    private final ListView<String> queueListView;
 
     private final AtomicBoolean isDownloading = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);

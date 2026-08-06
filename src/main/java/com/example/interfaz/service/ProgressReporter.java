@@ -10,10 +10,14 @@ public class ProgressReporter {
     private static final Logger LOGGER = Logger.getLogger(ProgressReporter.class.getName());
 
     private Consumer<String> progressCallback;
-    private final SongFilterService songFilterService;
+    private final FilterService songFilterService;
 
     public ProgressReporter() {
-        this.songFilterService = SongFilterService.getInstance();
+        this(new SongFilterService());
+    }
+
+    public ProgressReporter(FilterService songFilterService) {
+        this.songFilterService = songFilterService;
     }
 
     public void setProgressCallback(Consumer<String> callback) {
@@ -48,7 +52,7 @@ public class ProgressReporter {
                 handleDownloadStart(line);
             }
         } catch (Exception e) {
-            LOGGER.warning("Error procesando línea de progreso: " + e.getMessage());
+            LOGGER.warning(() -> "Error procesando línea de progreso: " + e.getMessage());
         }
     }
 
@@ -80,8 +84,10 @@ public class ProgressReporter {
         String fileName = extractFileNameFromProgress(line);
         if (fileName != null) {
             String songTitle = extractSongTitle(fileName);
-            if (songTitle != null && !songFilterService.isDuplicateSong(songTitle)) {
-                songFilterService.registerDownloadedSong(songTitle);
+            if (songTitle != null && (songFilterService == null || !songFilterService.songExists(new com.example.interfaz.model.Song(songTitle)))) {
+                if (songFilterService instanceof SongFilterService sfs) {
+                    sfs.registerDownloadedSong(songTitle);
+                }
                 notifyProgress("COMPLETED:" + songTitle);
             }
         }
@@ -92,8 +98,10 @@ public class ProgressReporter {
         String fileName = extractFileNameFromFFmpeg(line);
         if (fileName != null) {
             String songTitle = extractSongTitle(fileName);
-            if (songTitle != null && !songFilterService.isDuplicateSong(songTitle)) {
-                songFilterService.registerDownloadedSong(songTitle);
+            if (songTitle != null && (songFilterService == null || !songFilterService.songExists(new com.example.interfaz.model.Song(songTitle)))) {
+                if (songFilterService instanceof SongFilterService sfs) {
+                    sfs.registerDownloadedSong(songTitle);
+                }
                 notifyProgress("PROCESSED:" + songTitle);
             }
             notifyProgress("PROCESSING:" + fileName);
@@ -186,7 +194,7 @@ public class ProgressReporter {
     public void updateRealTimeProgress(String line) {
         processDownloadLine(line);
 
-        LOGGER.info("Progreso en tiempo real: " + line);
+        LOGGER.info(() -> "Progreso en tiempo real: " + line);
 
         if (line.contains("[download]") || line.contains("[ffmpeg]")) {
             notifyProgress(line);

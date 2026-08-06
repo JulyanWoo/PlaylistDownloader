@@ -3,9 +3,16 @@ package com.example.interfaz.service.download;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BiConsumer;
+
 public class DownloadProgressParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DownloadProgressParser.class);
+
+    private volatile ProgressListener listener;
+    private final Map<String, BiConsumer<String, ProgressListener>> handlers = new HashMap<>();
 
     public interface ProgressListener {
         void onOverallProgress(int current, int total);
@@ -17,49 +24,92 @@ public class DownloadProgressParser {
         void onGenericMessage(String message);
     }
 
-    public void parseAndDispatch(String message, ProgressListener listener) {
-        if (message == null || listener == null) return;
+    public DownloadProgressParser() {
+        registerHandlers();
+    }
 
-        if (message.startsWith("PLAYLIST_PROGRESS:")) {
-            String progressInfo = message.substring("PLAYLIST_PROGRESS:".length());
-            String[] parts = progressInfo.split("/");
-            if (parts.length == 2) {
-                try {
-                    int currentItem = Integer.parseInt(parts[0]);
-                    int totalItems = Integer.parseInt(parts[1]);
-                    listener.onOverallProgress(currentItem, totalItems);
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Error parseando progreso de playlist: {}", message);
-                }
+    private void registerHandlers() {
+        handlers.put("PLAYLIST_PROGRESS:", this::handlePlaylistProgress);
+        handlers.put("SONG_START:", this::handleSongStart);
+        handlers.put("PROGRESS:", this::handleCurrentProgress);
+        handlers.put("SPEED:", this::handleSpeedUpdate);
+        handlers.put("ETA:", this::handleEtaUpdate);
+        handlers.put("DOWNLOADING:", this::handleDownloading);
+        handlers.put("COMPLETED:", this::handleCompleted);
+        handlers.put("PROCESSED:", this::handleCompleted);
+    }
+
+    public void setListener(ProgressListener listener) {
+        this.listener = listener;
+    }
+
+    public void parseAndDispatch(String message) {
+        parseAndDispatch(message, this.listener);
+    }
+
+    public void parseAndDispatch(String message, ProgressListener customListener) {
+        ProgressListener target = customListener != null ? customListener : this.listener;
+        if (message == null || target == null) return;
+
+        String trimmed = message.trim();
+        if (trimmed.isEmpty()) return;
+
+        for (Map.Entry<String, BiConsumer<String, ProgressListener>> entry : handlers.entrySet()) {
+            String prefix = entry.getKey();
+            if (trimmed.startsWith(prefix)) {
+                String payload = trimmed.substring(prefix.length()).trim();
+                entry.getValue().accept(payload, target);
+                return;
             }
-        } else if (message.startsWith("SONG_START:")) {
-            String songInfo = message.substring("SONG_START:".length());
-            listener.onSongStart(songInfo);
-        } else if (message.startsWith("PROGRESS:")) {
-            String percentageStr = message.substring("PROGRESS:".length());
-            try {
-                double percentage = Double.parseDouble(percentageStr);
-                double progress = percentage / 100.0;
-                listener.onCurrentProgress(progress, String.format("Descargando... %.1f%%", percentage));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Error parseando porcentaje: {}", message);
-            }
-        } else if (message.startsWith("SPEED:")) {
-            String speed = message.substring("SPEED:".length());
-            listener.onSpeedUpdate(speed);
-        } else if (message.startsWith("ETA:")) {
-            String eta = message.substring("ETA:".length());
-            listener.onEtaUpdate(eta);
-        } else if (message.startsWith("DOWNLOADING:")) {
-            String videoTitle = message.substring("DOWNLOADING:".length());
-            listener.onSongStart(videoTitle);
-            listener.onStatusUpdate("🎵 Descargando...");
-        } else if (message.startsWith("COMPLETED:") || message.startsWith("PROCESSED:")) {
-            String completedTitle = message.substring(message.indexOf(":") + 1);
-            listener.onStatusUpdate("✅ Completado: " + completedTitle);
-        } else if (!isIgnoredLogLine(message)) {
-            listener.onGenericMessage(message);
         }
+
+        if (!isIgnoredLogLine(trimmed)) {
+            target.onGenericMessage(trimmed);
+        }
+    }
+
+    private void handlePlaylistProgress(String payload, ProgressListener target) {
+        String[] parts = payload.split("/", 2);
+        if (parts.length == 2) {
+            try {
+                int currentItem = Integer.parseInt(parts[0].trim());
+                int totalItems = Integer.parseInt(parts[1].trim());
+                target.onOverallProgress(currentItem, totalItems);
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Error parseando número en progreso de playlist: {}", payload);
+            }
+        }
+    }
+
+    private void handleSongStart(String payload, ProgressListener target) {
+        target.onSongStart(payload);
+    }
+
+    private void handleCurrentProgress(String payload, ProgressListener target) {
+        try {
+            double percentage = Double.parseDouble(payload);
+            double progress = percentage / 100.0;
+            target.onCurrentProgress(progress, String.format("%.1f%%", percentage));
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Error parseando porcentaje de progreso: {}", payload);
+        }
+    }
+
+    private void handleSpeedUpdate(String payload, ProgressListener target) {
+        target.onSpeedUpdate(payload);
+    }
+
+    private void handleEtaUpdate(String payload, ProgressListener target) {
+        target.onEtaUpdate(payload);
+    }
+
+    private void handleDownloading(String payload, ProgressListener target) {
+        target.onSongStart(payload);
+        target.onStatusUpdate(payload);
+    }
+
+    private void handleCompleted(String payload, ProgressListener target) {
+        target.onStatusUpdate(payload);
     }
 
     private boolean isIgnoredLogLine(String message) {

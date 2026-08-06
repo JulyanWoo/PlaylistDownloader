@@ -1,18 +1,5 @@
 package com.example.interfaz.controller;
 
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
-import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-import com.example.interfaz.service.LogService;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -24,6 +11,25 @@ import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
+import com.example.interfaz.service.LogService;
+
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+@SuppressWarnings({"unused", "FXML"})
 public class LogsController implements Initializable {
 
     @FXML
@@ -56,6 +62,7 @@ public class LogsController implements Initializable {
     private LogService logService;
     private Stage stage;
     private List<String> allLogLines;
+    private Timeline autoRefreshTimeline;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -78,11 +85,13 @@ public class LogsController implements Initializable {
     }
 
     private void applyFiltersAndColors() {
-        if (allLogLines == null) return;
+        if (allLogLines == null) {
+            return;
+        }
 
         List<String> filteredLogs = allLogLines.stream()
-            .filter(this::shouldShowLog)
-            .collect(Collectors.toList());
+                .filter(this::shouldShowLog)
+                .collect(Collectors.toList());
 
         logsTextFlow.getChildren().clear();
 
@@ -90,11 +99,11 @@ public class LogsController implements Initializable {
             Text textNode = new Text(line + "\n");
 
             if (line.contains("[ExtractAudio]")) {
-                textNode.setFill(Color.web("#00ff88")); 
+                textNode.setFill(Color.web("#00ff88"));
             } else if (line.contains("[download]")) {
-                textNode.setFill(Color.web("#ff0055")); 
+                textNode.setFill(Color.web("#ff0055"));
             } else {
-                textNode.setFill(Color.web("#e2e2e8")); 
+                textNode.setFill(Color.web("#e2e2e8"));
             }
 
             logsTextFlow.getChildren().add(textNode);
@@ -108,30 +117,22 @@ public class LogsController implements Initializable {
         if (logLine.contains("[download]") && showDownloadCheckBox.isSelected()) {
             return true;
         }
-        if (!logLine.contains("[ExtractAudio]") && !logLine.contains("[download]") && showOtherLogsCheckBox.isSelected()) {
-            return true;
-        }
-        return false;
+        return !logLine.contains("[ExtractAudio]") && !logLine.contains("[download]") && showOtherLogsCheckBox.isSelected();
     }
 
     private void startAutoRefresh() {
-        Thread refreshThread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(2000);
-                    if (stage != null && stage.isShowing()) {
-                        loadLogs();
-                    } else {
-                        break;
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+        }
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
+            if (stage != null && stage.isShowing()) {
+                loadLogs();
+            } else if (autoRefreshTimeline != null) {
+                autoRefreshTimeline.stop();
             }
-        });
-        refreshThread.setDaemon(true);
-        refreshThread.start();
+        }));
+        autoRefreshTimeline.setCycleCount(Animation.INDEFINITE);
+        autoRefreshTimeline.play();
     }
 
     @FXML
@@ -165,11 +166,11 @@ public class LogsController implements Initializable {
     private void onSaveLogs() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Guardar Logs");
-        fileChooser.setInitialFileName("logs_" + 
-            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".txt");
+        fileChooser.setInitialFileName("logs_"
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".txt");
 
-        FileChooser.ExtensionFilter extFilter = 
-            new FileChooser.ExtensionFilter("Archivos de texto (*.txt)", "*.txt");
+        FileChooser.ExtensionFilter extFilter
+                = new FileChooser.ExtensionFilter("Archivos de texto (*.txt)", "*.txt");
         fileChooser.getExtensionFilters().add(extFilter);
 
         File file = fileChooser.showSaveDialog(stage);
@@ -177,8 +178,8 @@ public class LogsController implements Initializable {
             try (FileWriter writer = new FileWriter(file)) {
                 StringBuilder content = new StringBuilder();
                 logsTextFlow.getChildren().forEach(node -> {
-                    if (node instanceof Text) {
-                        content.append(((Text) node).getText());
+                    if (node instanceof Text text) {
+                        content.append(text.getText());
                     }
                 });
                 writer.write(content.toString());
@@ -191,6 +192,9 @@ public class LogsController implements Initializable {
 
     @FXML
     private void onClose() {
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+        }
         if (stage != null) {
             stage.close();
         }
