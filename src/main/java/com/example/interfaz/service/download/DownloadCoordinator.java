@@ -29,17 +29,21 @@ public class DownloadCoordinator implements AutoCloseable {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    private final java.util.function.Consumer<DownloadEvent.DownloadStarted> startedListener = event ->
-        LOGGER.info("Descarga iniciada: {}", event != null && event.getSong() != null ? event.getSong().getTitle() : "");
-    private final java.util.function.Consumer<DownloadEvent.DownloadCompleted> completedListener = event ->
-        LOGGER.info("Descarga completada: {}", event != null && event.getSong() != null ? event.getSong().getTitle() : "");
+    private volatile boolean isPaused = false;
+    private final Object pauseLock = new Object();
+
+    private final java.util.function.Consumer<DownloadEvent.DownloadStarted> startedListener = event -> LOGGER
+            .info("Descarga iniciada: {}", event != null && event.getSong() != null ? event.getSong().getTitle() : "");
+    private final java.util.function.Consumer<DownloadEvent.DownloadCompleted> completedListener = event -> LOGGER.info(
+            "Descarga completada: {}", event != null && event.getSong() != null ? event.getSong().getTitle() : "");
     private final java.util.function.Consumer<DownloadEvent.DownloadFailed> failedListener = event -> {
         String errorMsg = (event != null && event.getError() != null) ? event.getError() : "Error desconocido";
-        LOGGER.warn("Descarga fallida: {} - {}", event != null && event.getSong() != null ? event.getSong().getTitle() : "", errorMsg);
+        LOGGER.warn("Descarga fallida: {} - {}",
+                event != null && event.getSong() != null ? event.getSong().getTitle() : "", errorMsg);
     };
 
-    public DownloadCoordinator(DownloadService downloadService, QueueManager queueManager, 
-                               EventPublisher eventPublisher) {
+    public DownloadCoordinator(DownloadService downloadService, QueueManager queueManager,
+            EventPublisher eventPublisher) {
         this.downloadService = downloadService;
         this.queueManager = queueManager;
         this.eventPublisher = eventPublisher;
@@ -140,6 +144,11 @@ public class DownloadCoordinator implements AutoCloseable {
                     String url = null;
                     Song song = null;
                     try {
+                        synchronized (pauseLock) {
+                            while (isPaused) {
+                                pauseLock.wait();
+                            }
+                        }
                         url = queueManager.pollNext();
                         if (url != null) {
                             song = downloadService.getSongInfo(url);
@@ -187,19 +196,38 @@ public class DownloadCoordinator implements AutoCloseable {
         return running.get();
     }
 
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public void pause() {
+        isPaused = true;
+    }
+
+    public void resume() {
+        isPaused = false;
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+
     public boolean isQueueEmpty() {
         return queueManager.isEmpty();
     }
 
     public void pauseDownload() {
-        if (!running.get()) return;
+        if (!running.get())
+            return;
+        pause();
         downloadService.pauseDownload();
         publishEvent(new DownloadEvent.StateChanged(true, true));
         LOGGER.info("Descarga pausada vía DownloadCoordinator");
     }
 
     public void resumeDownload() {
-        if (!running.get()) return;
+        if (!running.get())
+            return;
+        resume();
         downloadService.resumeDownload();
         publishEvent(new DownloadEvent.StateChanged(true, false));
         LOGGER.info("Descarga reanudada vía DownloadCoordinator");
