@@ -1,14 +1,11 @@
 package com.example.interfaz.util;
 
-import com.example.interfaz.model.Song;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.HashSet;
-import java.util.Set;
 
 public class FileUtils {
 
@@ -37,58 +34,6 @@ public class FileUtils {
 
     public static String getProgressFile() {
         return getMusicDirectory() + File.separator + "download_progress.txt";
-    }
-
-    public static String getDownloadedSongsFile() {
-        return getMusicDirectory() + File.separator + "canciones_descargadas.txt";
-    }
-
-    public static Set<String> loadDownloadedSongs() {
-        Set<String> songs = new HashSet<>();
-        Path path = Paths.get(getDownloadedSongsFile());
-
-        if (Files.exists(path)) {
-            try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    if (!trimmed.isEmpty()) {
-                        songs.add(trimmed);
-                    }
-                }
-                LOGGER.info("Cargadas {} canciones desde archivo UTF-8", songs.size());
-            } catch (IOException e) {
-                LOGGER.error("Error al cargar canciones descargadas desde {}", path, e);
-            }
-        } else {
-            LOGGER.info("Archivo de canciones no existe, se creará uno nuevo");
-        }
-
-        return songs;
-    }
-
-    public static void saveDownloadedSong(String songTitle) {
-        if (songTitle == null || songTitle.trim().isEmpty()) {
-            return;
-        }
-
-        String title = songTitle.trim();
-        createDirectoryIfNotExists(getMusicDirectory());
-        Path path = Paths.get(getDownloadedSongsFile());
-
-        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            writer.write(title);
-            writer.newLine();
-            LOGGER.info("Canción guardada en UTF-8: {}", title);
-        } catch (IOException e) {
-            LOGGER.error("Error al guardar canción: {}", title, e);
-        }
-    }
-
-    public static void saveDownloadedSong(Song song) {
-        if (song != null && song.getTitle() != null) {
-            saveDownloadedSong(song.getTitle());
-        }
     }
 
     public static int loadProgress() {
@@ -162,16 +107,8 @@ public class FileUtils {
         }
     }
 
-    public static void clearDownloadedSongsFile() {
-        createDirectoryIfNotExists(getMusicDirectory());
-        Path path = Paths.get(getDownloadedSongsFile());
-        try {
-            Files.write(path, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            LOGGER.info("Archivo de canciones descargadas reinicializado en UTF-8");
-        } catch (IOException e) {
-            LOGGER.error("Error al limpiar archivo de canciones descargadas", e);
-        }
-    }
+
+
 
     public static String extractFileName(String filePath) {
         if (filePath == null || filePath.trim().isEmpty()) {

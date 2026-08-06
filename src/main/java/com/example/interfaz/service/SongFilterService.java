@@ -1,12 +1,10 @@
 package com.example.interfaz.service;
 
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -16,69 +14,33 @@ import com.example.interfaz.model.Song;
 import com.example.interfaz.service.filter.DuplicateFinder;
 import com.example.interfaz.service.filter.SimilarityCalculator;
 import com.example.interfaz.service.filter.TitleNormalizer;
-import com.example.interfaz.util.FileUtils;
 
+/**
+ * Provides in-session duplicate filtering and URL validation.
+ * No persistent file history (canciones.txt) is used.
+ */
 public class SongFilterService implements FilterService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SongFilterService.class);
     private static final double SIMILARITY_THRESHOLD = 0.70;
-    private static final long CACHE_EXPIRY_MS = 30000;
 
-    private Set<String> downloadedSongs;
-    private long lastCacheUpdate;
     private final DuplicateFinder duplicateFinder;
 
     public SongFilterService() {
-        this.downloadedSongs = new HashSet<>();
-        this.lastCacheUpdate = 0;
         this.duplicateFinder = new DuplicateFinder(SIMILARITY_THRESHOLD);
-        loadDownloadedSongsInternal();
+        LOGGER.info("SongFilterService initialized (no persistent song history)");
     }
 
-    public boolean isDuplicateSong(String songTitle) {
-        if (songTitle == null || songTitle.trim().isEmpty()) {
+    /** Checks for duplicate among a given set of known titles (session-only). */
+    public boolean isDuplicateSong(String songTitle, Set<String> knownTitles) {
+        if (songTitle == null || songTitle.trim().isEmpty() || knownTitles == null) {
             return false;
         }
-        refreshCacheIfNeeded();
-        return duplicateFinder.isDuplicate(songTitle, downloadedSongs);
-    }
-
-    public boolean isDuplicateSong(Song song) {
-        if (song == null || song.getTitle() == null) {
-            return false;
-        }
-        return isDuplicateSong(song.getTitle());
-    }
-
-    public Map<String, List<String>> groupSimilarSongs(List<String> songTitles) {
-        return duplicateFinder.groupSimilarTitles(songTitles);
-    }
-
-    public void registerDownloadedSong(String songTitle) {
-        if (songTitle != null && !songTitle.trim().isEmpty()) {
-            String trimmed = songTitle.trim();
-            downloadedSongs.add(trimmed);
-            FileUtils.saveDownloadedSong(trimmed);
-            LOGGER.info("Canción registrada: {}", trimmed);
-        }
-    }
-
-    public void registerDownloadedSong(Song song) {
-        if (song != null && song.getTitle() != null) {
-            registerDownloadedSong(song.getTitle());
-            song.setDownloaded(true);
-        }
-    }
-
-    public Set<String> getDownloadedSongs() {
-        refreshCacheIfNeeded();
-        return new HashSet<>(downloadedSongs);
+        return duplicateFinder.isDuplicate(songTitle, knownTitles);
     }
 
     public double calculateSimilarity(String title1, String title2) {
-        if (title1 == null || title2 == null) {
-            return 0.0;
-        }
+        if (title1 == null || title2 == null) return 0.0;
         String n1 = TitleNormalizer.normalize(title1);
         String n2 = TitleNormalizer.normalize(title2);
         return SimilarityCalculator.calculateLevenshteinSimilarity(n1, n2);
@@ -89,136 +51,52 @@ public class SongFilterService implements FilterService {
     }
 
     @Override
-    public final List<Song> loadDownloadedSongs() {
-        return loadDownloadedSongsInternal();
-    }
-
-    private List<Song> loadDownloadedSongsInternal() {
-        try {
-            this.downloadedSongs = FileUtils.loadDownloadedSongs();
-            this.lastCacheUpdate = System.currentTimeMillis();
-            LOGGER.info("Caché de canciones actualizado: {} canciones", downloadedSongs.size());
-        } catch (Exception e) {
-            LOGGER.error("Error al cargar canciones descargadas", e);
-            this.downloadedSongs = new HashSet<>();
-        }
-        return new ArrayList<>();
-    }
-
-    @Override
-    public void updateCache(List<Song> songs) {
-        if (songs != null) {
-            this.downloadedSongs = new HashSet<>();
-            for (Song song : songs) {
-                if (song != null && song.getTitle() != null) {
-                    this.downloadedSongs.add(song.getTitle());
-                }
-            }
-            LOGGER.info("Caché actualizado con {} canciones", songs.size());
-        }
-    }
-
-    private void refreshCacheIfNeeded() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastCacheUpdate > CACHE_EXPIRY_MS) {
-            loadDownloadedSongsInternal();
-        }
-    }
-
-    public void clearCache() {
-        this.lastCacheUpdate = 0;
-        loadDownloadedSongsInternal();
-    }
-
-    public Map<String, Object> getStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalDownloadedSongs", downloadedSongs.size());
-        stats.put("similarityThreshold", SIMILARITY_THRESHOLD);
-        stats.put("lastCacheUpdate", new Date(lastCacheUpdate));
-        return stats;
-    }
-
-    @Override
-    public boolean songExists(Song song) {
-        return song != null && song.getTitle() != null && isDuplicateSong(song.getTitle());
-    }
-
-    @Override
     public List<Song> filterDuplicates(List<Song> songs) {
-        if (songs == null || songs.isEmpty()) {
-            return new ArrayList<>();
-        }
+        if (songs == null || songs.isEmpty()) return new ArrayList<>();
 
-        List<Song> filteredSongs = new ArrayList<>();
+        List<Song> result = new ArrayList<>();
         Set<String> seenTitles = new HashSet<>();
 
         for (Song song : songs) {
             if (song != null && song.getTitle() != null) {
-                String normalizedTitle = TitleNormalizer.normalize(song.getTitle());
-                if (!seenTitles.contains(normalizedTitle)) {
-                    seenTitles.add(normalizedTitle);
-                    filteredSongs.add(song);
+                String normalized = TitleNormalizer.normalize(song.getTitle());
+                if (seenTitles.add(normalized)) {
+                    result.add(song);
                 }
             }
         }
-
-        return filteredSongs;
+        return result;
     }
 
     @Override
     public List<List<Song>> findSimilarSongs(List<Song> songs, double threshold) {
-        List<List<Song>> similarGroups = new ArrayList<>();
+        List<List<Song>> groups = new ArrayList<>();
         List<Song> processed = new ArrayList<>();
 
         for (Song song : songs) {
-            if (processed.contains(song)) {
-                continue;
-            }
-
-            List<Song> similarGroup = new ArrayList<>();
-            similarGroup.add(song);
+            if (processed.contains(song)) continue;
+            List<Song> group = new ArrayList<>();
+            group.add(song);
             processed.add(song);
 
-            for (Song otherSong : songs) {
-                if (!processed.contains(otherSong) && 
-                    calculateSimilarity(song.getTitle(), otherSong.getTitle()) >= threshold) {
-                    similarGroup.add(otherSong);
-                    processed.add(otherSong);
+            for (Song other : songs) {
+                if (!processed.contains(other)
+                        && calculateSimilarity(song.getTitle(), other.getTitle()) >= threshold) {
+                    group.add(other);
+                    processed.add(other);
                 }
             }
-
-            if (similarGroup.size() > 1) {
-                similarGroups.add(similarGroup);
-            }
+            if (group.size() > 1) groups.add(group);
         }
-
-        return similarGroups;
-    }
-
-    @Override
-    public void saveDownloadedSongs(List<Song> songs) {
-        if (songs != null) {
-            downloadedSongs.clear();
-            for (Song song : songs) {
-                if (song != null && song.getTitle() != null) {
-                    downloadedSongs.add(song.getTitle());
-                }
-            }
-            LOGGER.info("Guardadas {} canciones en la caché", songs.size());
-        }
+        return groups;
     }
 
     @Override
     public boolean isValidUrl(String url) {
-        if (url == null || url.trim().isEmpty()) {
-            return false;
-        }
-
+        if (url == null || url.trim().isEmpty()) return false;
         try {
-            java.net.URI uri = java.net.URI.create(url);
-            java.net.URL urlObj = uri.toURL();
-            String protocol = urlObj.getProtocol();
-            return "http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol);
+            new URL(url.trim());
+            return url.contains("youtube.com") || url.contains("youtu.be");
         } catch (MalformedURLException e) {
             return false;
         }
