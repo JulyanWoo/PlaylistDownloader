@@ -70,4 +70,29 @@ public abstract class DownloadEvent {
             return status;
         }
     }
+
+    public static class StateChanged extends DownloadEvent {
+        private final boolean isDownloading;
+        private final boolean isPaused;
+
+        public StateChanged(boolean isDownloading, boolean isPaused) {
+            super(null);
+            this.isDownloading = isDownloading;
+            this.isPaused = isPaused;
+        }
+
+        public boolean isDownloading() {
+            return isDownloading;
+        }
+
+        public boolean isPaused() {
+            return isPaused;
+        }
+    }
+
+    public static class QueueEmpty extends DownloadEvent {
+        public QueueEmpty() {
+            super(null);
+        }
+    }
 }
