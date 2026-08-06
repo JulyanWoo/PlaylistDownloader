@@ -118,6 +118,9 @@ public class MainController {
                     if (queueViewController != null) {
                         queueViewController.setControlsEnabled(!event.isDownloading());
                     }
+                    if (!event.isDownloading() && progressViewController != null && downloadCoordinator.isQueueEmpty()) {
+                        progressViewController.markDownloadCompleted();
+                    }
                 })
             );
 
@@ -127,8 +130,8 @@ public class MainController {
 
             eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, event ->
                 Platform.runLater(() -> {
-                    if (progressViewController != null) {
-                        progressViewController.markDownloadCompleted();
+                    if (progressViewController != null && event.getSong() != null) {
+                        progressViewController.updateStatus("✅ " + event.getSong().getTitle() + " completado");
                     }
                 })
             );
@@ -181,18 +184,8 @@ public class MainController {
         }
     }
 
-    @FXML
-    void onClearSongsFile() {
-        dialogService.showConfirmation(
-            "Confirmar Limpieza",
-            "Limpiar archivo de canciones descargadas",
-            "Esto eliminará el archivo actual. ¿Desea continuar?",
-            () -> {
-                FileUtils.clearDownloadedSongsFile();
-                dialogService.showInfo("Éxito", "El archivo de canciones ha sido reinicializado.");
-            }
-        );
-    }
+
+
 
     public QueueController getQueueController() { return queueViewController; }
     public ProgressController getProgressController() { return progressViewController; }

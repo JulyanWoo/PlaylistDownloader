@@ -46,10 +46,10 @@
             <!-- Controles de filtrado -->
             <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10 0 10 0;">
                <children>
-                  <Label text="Filtros:" style="-fx-font-size: 12px; -fx-text-fill: -fx-text-secondary;" />
+                  <Label text="Filtros:" style="-fx-font-size: 12px; -fx-text-fill: #a0a0b0;" />
                   <CheckBox fx:id="showExtractAudioCheckBox" text="[ExtractAudio]" selected="true" onAction="#onFilterChanged" style="-fx-text-fill: #00ff88; -fx-font-weight: bold;" />
                   <CheckBox fx:id="showDownloadCheckBox" text="[download]" selected="true" onAction="#onFilterChanged" style="-fx-text-fill: #ff0055; -fx-font-weight: bold;" />
-                  <CheckBox fx:id="showOtherLogsCheckBox" text="Otros logs" selected="true" onAction="#onFilterChanged" style="-fx-text-fill: -fx-text-secondary;" />
+                  <CheckBox fx:id="showOtherLogsCheckBox" text="Otros logs" selected="true" onAction="#onFilterChanged" style="-fx-text-fill: #a0a0b0;" />
                   <Region HBox.hgrow="ALWAYS" />
                   <Button fx:id="resetFiltersButton" mnemonicParsing="false" onAction="#onResetFilters" text=" Restablecer" styleClass="secondary-button" style="-fx-font-size: 11px;">
                      <graphic>

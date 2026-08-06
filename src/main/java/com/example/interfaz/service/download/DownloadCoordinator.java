@@ -154,6 +154,7 @@ public class DownloadCoordinator implements AutoCloseable {
                                 queueManager.markAsFailed(url);
                                 publishEvent(new DownloadEvent.DownloadFailed(song, "Error procesando canción"));
                             }
+                            publishEvent(new DownloadEvent.QueueUpdated());
                         }
                     } catch (InterruptedException e) {
                         LOGGER.info("Hilo de descarga cancelado por solicitud del usuario");
@@ -184,6 +185,10 @@ public class DownloadCoordinator implements AutoCloseable {
 
     public boolean isDownloading() {
         return running.get();
+    }
+
+    public boolean isQueueEmpty() {
+        return queueManager.isEmpty();
     }
 
     public void pauseDownload() {

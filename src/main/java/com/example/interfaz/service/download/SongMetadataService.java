@@ -50,6 +50,7 @@ public class SongMetadataService {
             List<String> command = new ArrayList<>();
             command.add(ytDlp);
             command.add("--get-title");
+            command.add("--no-playlist");
             command.add("--no-warnings");
             command.add("--skip-download");
             command.add(url);
@@ -59,13 +60,19 @@ public class SongMetadataService {
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String titleLine = reader.readLine();
-                int exitCode = process.waitFor();
-                if (exitCode == 0 && titleLine != null && !titleLine.trim().isEmpty()) {
+                boolean finishedInTime = process.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+                if (!finishedInTime) {
+                    process.destroyForcibly();
+                    LOGGER.warn("Metadata fetch timed out for URL: {}", url);
+                } else if (process.exitValue() == 0 && titleLine != null && !titleLine.trim().isEmpty()) {
                     return titleLine.trim();
                 }
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             LOGGER.warn("Could not fetch title via yt-dlp for {}: {}", url, e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Metadata fetch interrupted for URL: {}", url);
         }
         return null;
     }
@@ -85,7 +92,9 @@ public class SongMetadataService {
             if (path != null && !path.isEmpty()) {
                 return path.substring(path.lastIndexOf('/') + 1);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // fall through to generic fallback
+        }
         return url;
     }
 }
