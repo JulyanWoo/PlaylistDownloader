@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox fx:id="queueSection" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.interfaz.controller.QueueController"
+      spacing="12.0" styleClass="card-panel" VBox.vgrow="ALWAYS">
+   <children>
+      <HBox alignment="CENTER_LEFT" spacing="12.0">
+         <children>
+            <FontIcon iconLiteral="mdi2p-playlist-music" iconSize="18" />
+            <Label fx:id="queueCountLabel" text="Cola: 0 elementos" styleClass="card-title" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button fx:id="removeSelectedButton" mnemonicParsing="false" onAction="#handleRemoveSelected" text="Eliminar" styleClass="button, danger">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2t-trash-can" iconSize="14" />
+               </graphic>
+            </Button>
+            <Button fx:id="clearQueueButton" mnemonicParsing="false" onAction="#handleClearQueue" text="Limpiar Todo" styleClass="button">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2b-broom" iconSize="14" />
+               </graphic>
+            </Button>
+         </children>
+      </HBox>
+      <ListView fx:id="queueListView" styleClass="list-view" VBox.vgrow="ALWAYS" />
+   </children>
+</VBox>

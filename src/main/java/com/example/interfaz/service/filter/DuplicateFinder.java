@@ -1,6 +1,12 @@
 package com.example.interfaz.service.filter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public class DuplicateFinder {
@@ -23,7 +29,7 @@ public class DuplicateFinder {
         }
 
         if (existingTitles.contains(title)) {
-            LOGGER.info("Duplicado exacto encontrado: " + title);
+            LOGGER.info(() -> "Duplicado exacto encontrado: " + title);
             return true;
         }
 
@@ -33,7 +39,7 @@ public class DuplicateFinder {
             String normalizedExisting = TitleNormalizer.normalize(existingTitle);
 
             if (SimilarityCalculator.calculateCombinedSimilarity(normalizedTitle, normalizedExisting) >= similarityThreshold) {
-                LOGGER.info("Similitud detectada: '" + title + "' es similar a '" + existingTitle + "'");
+                LOGGER.info(() ->"Similitud detectada: '" + title + "' es similar a '" + existingTitle + "'");
                 return true;
             }
         }

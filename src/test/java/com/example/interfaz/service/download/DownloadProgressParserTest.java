@@ -28,11 +28,11 @@ class DownloadProgressParserTest {
     }
 
     @Test
-    void testParseSpeedUpdate() {
+    void testParseSpeedUpdateWithWhitespace() {
         DownloadProgressParser parser = new DownloadProgressParser();
         AtomicReference<String> capturedSpeed = new AtomicReference<>("");
 
-        parser.parseAndDispatch("SPEED:3.5MiB/s", new DownloadProgressParser.ProgressListener() {
+        parser.parseAndDispatch("   SPEED:3.5MiB/s  ", new DownloadProgressParser.ProgressListener() {
             @Override public void onOverallProgress(int current, int total) {}
             @Override public void onSongStart(String songTitle) {}
             @Override public void onCurrentProgress(double progress, String statusText) {}
@@ -52,10 +52,10 @@ class DownloadProgressParserTest {
         DownloadProgressParser parser = new DownloadProgressParser();
         AtomicBoolean called = new AtomicBoolean(false);
 
-        parser.parseAndDispatch("PLAYLIST_PROGRESS:2/10", new DownloadProgressParser.ProgressListener() {
+        parser.parseAndDispatch("PLAYLIST_PROGRESS:3/20", new DownloadProgressParser.ProgressListener() {
             @Override public void onOverallProgress(int current, int total) {
-                assertEquals(2, current);
-                assertEquals(10, total);
+                assertEquals(3, current);
+                assertEquals(20, total);
                 called.set(true);
             }
             @Override public void onSongStart(String songTitle) {}
@@ -67,5 +67,22 @@ class DownloadProgressParserTest {
         });
 
         assertTrue(called.get());
+    }
+
+    @Test
+    void testInvalidNumberDoesNotThrowException() {
+        DownloadProgressParser parser = new DownloadProgressParser();
+
+        assertDoesNotThrow(() -> {
+            parser.parseAndDispatch("PROGRESS:abc", new DownloadProgressParser.ProgressListener() {
+                @Override public void onOverallProgress(int current, int total) {}
+                @Override public void onSongStart(String songTitle) {}
+                @Override public void onCurrentProgress(double progress, String statusText) {}
+                @Override public void onSpeedUpdate(String speed) {}
+                @Override public void onEtaUpdate(String eta) {}
+                @Override public void onStatusUpdate(String statusMessage) {}
+                @Override public void onGenericMessage(String message) {}
+            });
+        });
     }
 }

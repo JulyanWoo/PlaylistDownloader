@@ -1,13 +1,14 @@
 package com.example.interfaz.service.download;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BinaryResolver {
 
@@ -86,7 +87,7 @@ public class BinaryResolver {
     private File getJarFolder() {
         try {
             return new File(BinaryResolver.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile();
-        } catch (Exception e) {
+        } catch (URISyntaxException e) {
             LOGGER.debug("Could not resolve JAR folder", e);
             return null;
         }

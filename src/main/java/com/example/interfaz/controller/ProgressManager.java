@@ -2,14 +2,20 @@ package com.example.interfaz.controller;
 
 import javafx.application.Platform;
 
+@SuppressWarnings({"unused", "FXML"})
 public class ProgressManager {
 
     public ProgressManager() {
-        initializeProgress();
+        resetProgressInternal();
     }
 
-    private void initializeProgress() {
-        resetProgress();
+    private void resetProgressInternal() {
+        Platform.runLater(() -> {
+        });
+    }
+
+    public final void resetProgress() {
+        resetProgressInternal();
     }
 
     public void updateProgress(double progress) {
@@ -28,11 +34,6 @@ public class ProgressManager {
     }
 
     public void setIndeterminateProgress() {
-        Platform.runLater(() -> {
-        });
-    }
-
-    public void resetProgress() {
         Platform.runLater(() -> {
         });
     }
@@ -67,7 +68,7 @@ public class ProgressManager {
     }
 
     public void updateCurrentProgress(String message, double progress) {
-        Platform.runLater(() -> {;
+        Platform.runLater(() -> {
         });
     }
 

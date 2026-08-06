@@ -1,14 +1,22 @@
 package com.example.interfaz.service;
 
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.filter.DuplicateFinder;
 import com.example.interfaz.service.filter.SimilarityCalculator;
 import com.example.interfaz.service.filter.TitleNormalizer;
 import com.example.interfaz.util.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
 
 public class SongFilterService implements FilterService {
 
@@ -18,21 +26,13 @@ public class SongFilterService implements FilterService {
 
     private Set<String> downloadedSongs;
     private long lastCacheUpdate;
-    private static SongFilterService instance;
     private final DuplicateFinder duplicateFinder;
 
-    private SongFilterService() {
+    public SongFilterService() {
         this.downloadedSongs = new HashSet<>();
         this.lastCacheUpdate = 0;
         this.duplicateFinder = new DuplicateFinder(SIMILARITY_THRESHOLD);
-        loadDownloadedSongs();
-    }
-
-    public static synchronized SongFilterService getInstance() {
-        if (instance == null) {
-            instance = new SongFilterService();
-        }
-        return instance;
+        loadDownloadedSongsInternal();
     }
 
     public boolean isDuplicateSong(String songTitle) {
@@ -88,7 +88,12 @@ public class SongFilterService implements FilterService {
         return SimilarityCalculator.areSimilar(title1, title2, SIMILARITY_THRESHOLD);
     }
 
-    public List<Song> loadDownloadedSongs() {
+    @Override
+    public final List<Song> loadDownloadedSongs() {
+        return loadDownloadedSongsInternal();
+    }
+
+    private List<Song> loadDownloadedSongsInternal() {
         try {
             this.downloadedSongs = FileUtils.loadDownloadedSongs();
             this.lastCacheUpdate = System.currentTimeMillis();
@@ -116,13 +121,13 @@ public class SongFilterService implements FilterService {
     private void refreshCacheIfNeeded() {
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastCacheUpdate > CACHE_EXPIRY_MS) {
-            loadDownloadedSongs();
+            loadDownloadedSongsInternal();
         }
     }
 
     public void clearCache() {
         this.lastCacheUpdate = 0;
-        loadDownloadedSongs();
+        loadDownloadedSongsInternal();
     }
 
     public Map<String, Object> getStatistics() {
@@ -133,6 +138,7 @@ public class SongFilterService implements FilterService {
         return stats;
     }
 
+    @Override
     public boolean songExists(Song song) {
         return song != null && song.getTitle() != null && isDuplicateSong(song.getTitle());
     }
@@ -213,7 +219,7 @@ public class SongFilterService implements FilterService {
             java.net.URL urlObj = uri.toURL();
             String protocol = urlObj.getProtocol();
             return "http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol);
-        } catch (Exception e) {
+        } catch (MalformedURLException e) {
             return false;
         }
     }
