@@ -1,128 +1,134 @@
-# YouTube Downloader - Descargador de Música
+# Playlist Downloader
 
-Aplicación de escritorio desarrollada en **JavaFX** para descargar música desde YouTube de manera eficiente, gestionando colas de descarga y detectando duplicados. Utiliza la potencia de **yt-dlp** y **FFmpeg** para el procesamiento de audio.
+A modern **JavaFX** desktop application designed for fast, efficient, and reliable music and playlist downloading from YouTube and other supported platforms. Built with a decoupled event-driven architecture, robust thread safety, and styled with **AtlantaFX Primer Dark**. Uses **yt-dlp** and **FFmpeg** for high-quality audio extraction and processing.
 
-##  Características Principales
+---
 
-- **Descarga de Audio:** Extrae audio de videos y listas de reproducción de YouTube en formato MP3.
-- **Gestión de Colas:** Agrega múltiples enlaces para descargar de forma secuencial.
-- **Detección de Duplicados:** Evita descargar canciones que ya existen en tu biblioteca local.
-- **Interfaz Gráfica Intuitiva:** Visualiza el progreso de descarga, velocidad y estado en tiempo real.
-- **Visor de Logs:** Panel integrado para monitorear la actividad interna y depurar errores.
-- **Configuración Persistente:** Guarda tus preferencias de descarga automáticamente.
+## Key Features
 
-## Requisitos del Sistema
+- **Audio Extraction:** Download tracks and full playlists in MP3 format with metadata tags.
+- **Queue Management:** Add, remove, and manage download queues asynchronously.
+- **Smart Duplicate Detection:** Prevents downloading songs already present in your local music library using fuzzy title similarity matching (Levenshtein + Jaccard distance).
+- **Modern Event-Driven UI:** Real-time progress updates, download speed, ETA, and state indicators powered by an internal `EventBus`.
+- **AtlantaFX Dark Theme & Icons:** Sleek, modern user interface with **AtlantaFX Primer Dark** and **Ikonli** vector font icons.
+- **High-Performance Log Viewer:** Thread-safe, real-time internal console log viewer (`LogService`).
+- **Resilient Process Management:** Robust external process management (`ProcessExecutor`) supporting pausing, resuming, graceful termination, and clean shutdown.
 
-Para ejecutar o compilar este proyecto necesitas:
+---
 
-- **Java JDK 17** o superior.
-- **Maven** (incluido mediante wrapper `mvnw`).
-- **Conexión a Internet** activa.
-- **Sistema Operativo:** Windows (probado), aunque debería funcionar en Linux/macOS con los binarios adecuados.
+## Technology Stack
 
-### Dependencias Externas (no incluidas por defecto)
-La aplicación usa dos herramientas externas:
-1. **yt-dlp:** Motor de descarga.
-2. **FFmpeg:** Conversión de audio.
+- **Java 17+** (JavaFX 17)
+- **AtlantaFX** (Modern CSS Theme System - Primer Dark)
+- **Ikonli** (Icon pack framework for JavaFX)
+- **SLF4J & Logback** (Structured Logging)
+- **yt-dlp** (Command-line media downloader)
+- **FFmpeg** (Audio processing and conversion backend)
+- **Maven** (Dependency management & build system)
 
-Puedes instalarlas en el sistema o colocarlas manualmente en rutas locales. La app acepta dos métodos:
-- Variables de entorno `YT_DLP_PATH` y `FFMPEG_PATH`.
-- Ejecutables locales en `Libs/` con rutas por defecto (ver abajo).
+---
 
-##  Instalación y Ejecución
+## System Requirements
 
-### 1. Clonar el repositorio
-```bash
-git clone <URL-DEL-REPOSITORIO>
-cd PlaylistDownloader
+- **Java JDK 17** or higher.
+- **Maven** (included via wrapper `mvnw`).
+- Active **Internet connection**.
+- **Operating System:** Windows, macOS, or Linux (with appropriate binaries).
+
+---
+
+## External Dependencies Setup
+
+The application relies on `yt-dlp` and `ffmpeg`.
+
+### Option A: System PATH or Environment Variables (Recommended)
+
+1. **Install binaries (Windows via winget):**
+   ```powershell
+   winget install -e yt-dlp.yt-dlp
+   winget install -e FFmpeg.FFmpeg
+   ```
+2. **Set Environment Variables (Optional if already in `PATH`):**
+   ```powershell
+   $yt = (Get-Command yt-dlp.exe).Source
+   $ff = (Get-Command ffmpeg.exe).Source
+   setx YT_DLP_PATH "$yt" /M
+   setx FFMPEG_PATH "$ff" /M
+   ```
+
+### Option B: Local Executables in `Libs/` Directory
+
+Alternatively, place executables directly inside the project structure:
+
 ```
-
-### 2. Requisitos previos
-
-Instala Java JDK 17 y configura la variable de entorno `JAVA_HOME`.
-
-Verifica la instalación con:
-```bash
-java -version
-```
-Si ves el mensaje `JAVA_HOME not found`, instala JDK 17 y configura `JAVA_HOME` antes de continuar.
-
-### 3. Instalar dependencias
-
-**Windows (recomendado con winget):**
-```powershell
-winget install -e yt-dlp.yt-dlp
-winget install -e FFmpeg.FFmpeg
-```
-
-Configura variables para que la app detecte los binarios:
-```powershell
-$yt = (Get-Command yt-dlp.exe).Source
-$ff = (Get-Command ffmpeg.exe).Source
-setx YT_DLP_PATH "$yt" /M
-setx FFMPEG_PATH "$ff" /M
-```
-
-**Alternativa local (sin variables):** coloca los ejecutables en el proyecto:
-```
-src/main/
+PlaylistDownloader/
 ├── Libs/
 │   ├── yt-dlp.exe
-│   └── ffmpeg-<version>-full_build/
-│       └── ffmpeg-<version>-full_build/
-│           └── bin/
-│               └── ffmpeg.exe
+│   └── ffmpeg.exe
 ```
-Rutas por defecto utilizadas por la app:
-- `src/main/Libs/yt-dlp.exe` o `Libs/yt-dlp.exe` en la raíz
-- `src/main/Libs/.../bin/ffmpeg.exe` o la ruta equivalente en `Libs/`
 
-La app detecta automáticamente `yt-dlp` y `ffmpeg` en `PATH`. Si no están en `PATH`, usa `YT_DLP_PATH`/`FFMPEG_PATH`. Si tampoco existen, busca en `src/main/Libs` y luego en `Libs/` en la raíz.
+The application automatically resolves binaries in the following order:
 
-### 3. Ejecutar la aplicación
-Usa el wrapper de Maven para iniciar la aplicación sin instalar nada extra:
+1. Environment variables (`YT_DLP_PATH`, `FFMPEG_PATH`)
+2. System `PATH`
+3. Project local `src/main/Libs/` or `Libs/` directory
 
-**En Windows:**
+---
+
+## How to Run
+
+Use the Maven wrapper to build and run the application:
+
+### Windows:
+
 ```powershell
-./mvnw.cmd clean javafx:run
+.\mvnw.cmd clean javafx:run
 ```
 
-**En Linux/macOS:**
+### Linux / macOS:
+
 ```bash
 ./mvnw clean javafx:run
 ```
 
-### 4. Generar ejecutable (Opcional)
-Para crear un archivo JAR con todas las dependencias:
+### Run Unit Tests:
+
 ```powershell
-./mvnw.cmd -DskipTests package
+.\mvnw.cmd test
 ```
-El archivo se generará en `target/interfaz-1.2-SNAPSHOT-shaded.jar`.
 
-##  Estructura del Proyecto
+### Package Application JAR:
 
-El código fuente se encuentra en `src/main/java/com/example/interfaz` y sigue una arquitectura MVC:
+```powershell
+.\mvnw.cmd -DskipTests package
+```
 
-- **`app/`**: Punto de entrada (`Main.java`).
-- **`controller/`**: Lógica de la interfaz gráfica.
-  - `MainController`: Coordinador principal.
-  - `QueueController`: Gestión de la lista de descargas.
-  - `ProgressController`: Actualización de barras de progreso.
-  - `LogsController`: Ventana de registros.
-- **`service/`**: Lógica de negocio.
-  - `YouTubeDownloadService`: Wrapper para ejecutar `yt-dlp`.
-  - `ProgressReporter`: Parsea la salida de consola para actualizar la UI.
-  - `SongFilterService`: Lógica para filtrar canciones duplicadas.
-- **`model/`**: Clases de datos como `Song`.
-- **`util/`**: Utilidades para manejo de archivos (`FileUtils`) y parseo.
-- **`config/`**: Gestión de configuración (`AppConfig`).
+The packaged executable JAR will be located at `target/interfaz-1.2-SNAPSHOT-shaded.jar`.
 
-##  Configuración
+---
 
-La aplicación crea un archivo `user-config.properties` en la raíz para guardar configuraciones como la carpeta de destino de las descargas. Puedes editarlo manualmente o desde la interfaz (si está implementado).
+## Project Architecture
 
-## Créditos
+Located under `src/main/java/com/example/interfaz`:
 
-- **yt-dlp:** Herramienta de línea de comandos para descargar videos.
-- **FFmpeg:** Framework multimedia para decodificar y codificar.
-- **JavaFX:** Framework para la interfaz gráfica.
+- **`app/`**: Application entry point (`Main.java`, `Launcher.java`).
+- **`controller/`**: JavaFX UI controllers (`MainController`, `QueueController`, `ProgressController`, `LogsController`).
+- **`service/`**: Core business logic and background services:
+  - `download/`: `DownloadCoordinator`, `ProcessExecutor`, `YtDlpCommandBuilder`, `BinaryResolver`, `DownloadProgressParser`.
+  - `filter/`: `DuplicateFinder`, `SimilarityCalculator`, `TitleNormalizer`.
+  - `ui/`: `NavigationService`, `ThemeService`, `DialogService`, `WindowManager`, `FolderChooserService`.
+  - `YouTubeDownloadService`: High-level service handling process orchestration.
+  - `LogService`: High-performance thread-safe log capturing ($O(1)$ ring buffer).
+- **`event/`**: Decoupled `EventBus` pub-sub pattern for application events (`DownloadEvent`).
+- **`factory/`**: `ServiceFactory` managing singleton lifecycle and clean resource disposal.
+- **`model/`**: Domain models (`Song`).
+- **`util/`**: File utilities and persistent storage helpers (`FileUtils`).
+
+---
+
+## License & Credits
+
+- **yt-dlp**: https://github.com/yt-dlp/yt-dlp
+- **FFmpeg**: https://ffmpeg.org/
+- **AtlantaFX**: https://mkpaz.github.io/atlantafx/
+- **Ikonli**: https://kordamp.org/ikonli/
