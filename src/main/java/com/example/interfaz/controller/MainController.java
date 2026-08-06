@@ -246,7 +246,6 @@ public class MainController {
     private void startDownloadProcess() {
         onNavDownloads();
         progressController.showProgressSection();
-        adjustWindowSizeForDownload();
         progressController.updateStatus("🚀 Iniciando descarga...");
 
         downloadTask = eventHandler.createDownloadTask();
@@ -434,19 +433,6 @@ public class MainController {
 
     public void setStage(Stage stage) {
         this.primaryStage = stage;
-    }
-
-    private void adjustWindowSizeForDownload() {
-        if (primaryStage != null) {
-            Platform.runLater(() -> {
-                double currentHeight = primaryStage.getHeight();
-                double newHeight = Math.max(currentHeight, 700); 
-
-                primaryStage.setHeight(newHeight);
-
-                LOGGER.debug("Tamaño de ventana ajustado para mostrar progreso: {}x{}", primaryStage.getWidth(), newHeight);
-            });
-        }
     }
 
     @FXML

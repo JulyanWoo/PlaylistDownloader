@@ -1,26 +1,24 @@
 package com.example.interfaz.service;
 
 import com.example.interfaz.model.Song;
-import com.example.interfaz.util.FileUtils;
 import com.example.interfaz.service.filter.DuplicateFinder;
 import com.example.interfaz.service.filter.SimilarityCalculator;
-
-import java.util.*;
+import com.example.interfaz.service.filter.TitleNormalizer;
+import com.example.interfaz.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 public class SongFilterService implements FilterService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SongFilterService.class);
-
     private static final double SIMILARITY_THRESHOLD = 0.70;
+    private static final long CACHE_EXPIRY_MS = 30000;
 
     private Set<String> downloadedSongs;
     private long lastCacheUpdate;
-    private static final long CACHE_EXPIRY_MS = 30000;
-
     private static SongFilterService instance;
-
     private final DuplicateFinder duplicateFinder;
 
     private SongFilterService() {
@@ -41,9 +39,7 @@ public class SongFilterService implements FilterService {
         if (songTitle == null || songTitle.trim().isEmpty()) {
             return false;
         }
-
         refreshCacheIfNeeded();
-
         return duplicateFinder.isDuplicate(songTitle, downloadedSongs);
     }
 
@@ -51,7 +47,6 @@ public class SongFilterService implements FilterService {
         if (song == null || song.getTitle() == null) {
             return false;
         }
-
         return isDuplicateSong(song.getTitle());
     }
 
@@ -61,9 +56,10 @@ public class SongFilterService implements FilterService {
 
     public void registerDownloadedSong(String songTitle) {
         if (songTitle != null && !songTitle.trim().isEmpty()) {
-            downloadedSongs.add(songTitle.trim());
-            FileUtils.saveDownloadedSong(songTitle.trim());
-            LOGGER.info("Canción registrada: " + songTitle);
+            String trimmed = songTitle.trim();
+            downloadedSongs.add(trimmed);
+            FileUtils.saveDownloadedSong(trimmed);
+            LOGGER.info("Canción registrada: {}", trimmed);
         }
     }
 
@@ -83,17 +79,9 @@ public class SongFilterService implements FilterService {
         if (title1 == null || title2 == null) {
             return 0.0;
         }
-
-        String normalized1 = normalizeTitle(title1);
-        String normalized2 = normalizeTitle(title2);
-
-        int maxLength = Math.max(normalized1.length(), normalized2.length());
-        if (maxLength == 0) {
-            return 1.0;
-        }
-
-        int distance = levenshteinDistance(normalized1, normalized2);
-        return 1.0 - (double) distance / maxLength;
+        String n1 = TitleNormalizer.normalize(title1);
+        String n2 = TitleNormalizer.normalize(title2);
+        return SimilarityCalculator.calculateLevenshteinSimilarity(n1, n2);
     }
 
     public boolean areSimilar(String title1, String title2) {
@@ -104,7 +92,7 @@ public class SongFilterService implements FilterService {
         try {
             this.downloadedSongs = FileUtils.loadDownloadedSongs();
             this.lastCacheUpdate = System.currentTimeMillis();
-            LOGGER.info("Cache de canciones actualizado: {} canciones", downloadedSongs.size());
+            LOGGER.info("Caché de canciones actualizado: {} canciones", downloadedSongs.size());
         } catch (Exception e) {
             LOGGER.error("Error al cargar canciones descargadas", e);
             this.downloadedSongs = new HashSet<>();
@@ -121,7 +109,7 @@ public class SongFilterService implements FilterService {
                     this.downloadedSongs.add(song.getTitle());
                 }
             }
-            LOGGER.info("Cache actualizado con " + songs.size() + " canciones");
+            LOGGER.info("Caché actualizado con {} canciones", songs.size());
         }
     }
 
@@ -146,11 +134,7 @@ public class SongFilterService implements FilterService {
     }
 
     public boolean songExists(Song song) {
-        if (song == null || song.getTitle() == null) {
-            return false;
-        }
-
-        return isDuplicateSong(song.getTitle());
+        return song != null && song.getTitle() != null && isDuplicateSong(song.getTitle());
     }
 
     @Override
@@ -164,7 +148,7 @@ public class SongFilterService implements FilterService {
 
         for (Song song : songs) {
             if (song != null && song.getTitle() != null) {
-                String normalizedTitle = normalizeTitle(song.getTitle());
+                String normalizedTitle = TitleNormalizer.normalize(song.getTitle());
                 if (!seenTitles.contains(normalizedTitle)) {
                     seenTitles.add(normalizedTitle);
                     filteredSongs.add(song);
@@ -214,58 +198,23 @@ public class SongFilterService implements FilterService {
                     downloadedSongs.add(song.getTitle());
                 }
             }
-            LOGGER.info("Guardadas " + songs.size() + " canciones en la caché");
-         }
-     }
+            LOGGER.info("Guardadas {} canciones en la caché", songs.size());
+        }
+    }
 
-      private String normalizeTitle(String title) {
-          if (title == null) {
-              return "";
-          }
+    @Override
+    public boolean isValidUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return false;
+        }
 
-          return title.toLowerCase()
-                      .replaceAll("[^a-z0-9\\s]", "")
-                      .replaceAll("\\s+", " ")
-                      .trim();
-      }
-
-     private int levenshteinDistance(String s1, String s2) {
-         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
-
-         for (int i = 0; i <= s1.length(); i++) {
-             dp[i][0] = i;
-         }
-
-         for (int j = 0; j <= s2.length(); j++) {
-             dp[0][j] = j;
-         }
-
-         for (int i = 1; i <= s1.length(); i++) {
-             for (int j = 1; j <= s2.length(); j++) {
-                 if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
-                     dp[i][j] = dp[i - 1][j - 1];
-                 } else {
-                     dp[i][j] = 1 + Math.min(Math.min(dp[i - 1][j], dp[i][j - 1]), dp[i - 1][j - 1]);
-                 }
-             }
-         }
-
-         return dp[s1.length()][s2.length()];
-     }
-
-     @Override
-     public boolean isValidUrl(String url) {
-         if (url == null || url.trim().isEmpty()) {
-             return false;
-         }
-
-         try {
-             java.net.URI uri = java.net.URI.create(url);
-             java.net.URL urlObj = uri.toURL();
-             String protocol = urlObj.getProtocol();
-             return "http".equals(protocol) || "https".equals(protocol);
-         } catch (Exception e) {
-             return false;
-         }
-     }
- }
+        try {
+            java.net.URI uri = java.net.URI.create(url);
+            java.net.URL urlObj = uri.toURL();
+            String protocol = urlObj.getProtocol();
+            return "http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}

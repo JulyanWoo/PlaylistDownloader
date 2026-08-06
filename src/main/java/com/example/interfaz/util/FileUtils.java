@@ -1,21 +1,24 @@
 package com.example.interfaz.util;
 
 import com.example.interfaz.model.Song;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Logger;
-import java.util.logging.Level;
 
 public class FileUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(FileUtils.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
     private static String musicDirectory = null;
+
+    private FileUtils() {
+        throw new UnsupportedOperationException("Esta es una clase de utilidades");
+    }
 
     public static String getMusicDirectory() {
         if (musicDirectory == null) {
@@ -40,25 +43,22 @@ public class FileUtils {
         return getMusicDirectory() + File.separator + "canciones_descargadas.txt";
     }
 
-    private FileUtils() {
-        throw new UnsupportedOperationException("Esta es una clase de utilidades");
-    }
-
     public static Set<String> loadDownloadedSongs() {
         Set<String> songs = new HashSet<>();
-        File file = new File(getDownloadedSongsFile());
+        Path path = Paths.get(getDownloadedSongsFile());
 
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        if (Files.exists(path)) {
+            try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (!line.trim().isEmpty()) {
-                        songs.add(line.trim());
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty()) {
+                        songs.add(trimmed);
                     }
                 }
-                LOGGER.info("Cargadas " + songs.size() + " canciones desde archivo");
+                LOGGER.info("Cargadas {} canciones desde archivo UTF-8", songs.size());
             } catch (IOException e) {
-                LOGGER.log(Level.SEVERE, "Error al cargar canciones descargadas", e);
+                LOGGER.error("Error al cargar canciones descargadas desde {}", path, e);
             }
         } else {
             LOGGER.info("Archivo de canciones no existe, se creará uno nuevo");
@@ -72,17 +72,16 @@ public class FileUtils {
             return;
         }
 
-        try {
+        String title = songTitle.trim();
+        createDirectoryIfNotExists(getMusicDirectory());
+        Path path = Paths.get(getDownloadedSongsFile());
 
-            createDirectoryIfNotExists(getMusicDirectory());
-
-            try (FileWriter writer = new FileWriter(getDownloadedSongsFile(), true)) {
-                writer.write(songTitle.trim() + "\n");
-                writer.flush();
-                LOGGER.info("Canción guardada: " + songTitle);
-            }
+        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            writer.write(title);
+            writer.newLine();
+            LOGGER.info("Canción guardada en UTF-8: {}", title);
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error al guardar canción: " + songTitle, e);
+            LOGGER.error("Error al guardar canción: {}", title, e);
         }
     }
 
@@ -93,109 +92,94 @@ public class FileUtils {
     }
 
     public static int loadProgress() {
-        File file = new File(getProgressFile());
+        Path path = Paths.get(getProgressFile());
 
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        if (Files.exists(path)) {
+            try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
                 String line = reader.readLine();
                 if (line != null && !line.trim().isEmpty()) {
                     int progress = Integer.parseInt(line.trim());
-                    LOGGER.info("Progreso cargado: " + progress);
+                    LOGGER.info("Progreso cargado: {}", progress);
                     return progress;
                 }
             } catch (IOException | NumberFormatException e) {
-                LOGGER.log(Level.WARNING, "Error al cargar progreso", e);
+                LOGGER.warn("Error al cargar progreso desde {}", path, e);
             }
         }
 
-        return 1; 
+        return 1;
     }
 
     public static void saveProgress(int videoNumber) {
-        try {
-            createDirectoryIfNotExists(getMusicDirectory());
+        createDirectoryIfNotExists(getMusicDirectory());
+        Path path = Paths.get(getProgressFile());
 
-            try (FileWriter writer = new FileWriter(getProgressFile())) {
-                writer.write(String.valueOf(videoNumber));
-                writer.flush();
-                LOGGER.fine("Progreso guardado: " + videoNumber);
-            }
+        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            writer.write(String.valueOf(videoNumber));
+            LOGGER.debug("Progreso guardado: {}", videoNumber);
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error al guardar progreso", e);
+            LOGGER.error("Error al guardar progreso {}", videoNumber, e);
         }
     }
 
     public static void createDirectoryIfNotExists(String directoryPath) {
+        if (directoryPath == null || directoryPath.trim().isEmpty()) {
+            return;
+        }
         try {
             Path path = Paths.get(directoryPath);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                LOGGER.info("Directorio creado: " + directoryPath);
+                LOGGER.info("Directorio creado: {}", directoryPath);
             }
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error al crear directorio: " + directoryPath, e);
+            LOGGER.error("Error al crear directorio: {}", directoryPath, e);
         }
     }
 
     public static boolean fileExists(String filePath) {
-        return new File(filePath).exists();
+        return filePath != null && Files.exists(Paths.get(filePath));
     }
 
     public static long getFileSize(String filePath) {
-        File file = new File(filePath);
-        return file.exists() ? file.length() : -1;
+        if (filePath == null) return -1;
+        Path path = Paths.get(filePath);
+        try {
+            return Files.exists(path) ? Files.size(path) : -1;
+        } catch (IOException e) {
+            return -1;
+        }
     }
 
     public static boolean deleteFile(String filePath) {
+        if (filePath == null) return true;
         try {
-            File file = new File(filePath);
-            if (file.exists()) {
-                boolean deleted = file.delete();
-                if (deleted) {
-                    LOGGER.info("Archivo eliminado: " + filePath);
-                }
-                return deleted;
-            }
-            return true; 
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al eliminar archivo: " + filePath, e);
+            Path path = Paths.get(filePath);
+            return Files.deleteIfExists(path);
+        } catch (IOException e) {
+            LOGGER.error("Error al eliminar archivo: {}", filePath, e);
             return false;
         }
     }
 
     public static void clearDownloadedSongsFile() {
+        createDirectoryIfNotExists(getMusicDirectory());
+        Path path = Paths.get(getDownloadedSongsFile());
         try {
-            createDirectoryIfNotExists(getMusicDirectory());
-
-            File file = new File(getDownloadedSongsFile());
-            if (file.exists()) {
-                file.delete();
-                LOGGER.info("Archivo de canciones descargadas limpiado");
-            }
-
-            try (FileWriter writer = new FileWriter(getDownloadedSongsFile())) {
-                writer.write(""); 
-                writer.flush();
-                LOGGER.info("Archivo de canciones descargadas reinicializado");
-            }
+            Files.write(path, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            LOGGER.info("Archivo de canciones descargadas reinicializado en UTF-8");
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error al limpiar archivo de canciones descargadas", e);
+            LOGGER.error("Error al limpiar archivo de canciones descargadas", e);
         }
     }
 
     public static String extractFileName(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
+        if (filePath == null || filePath.trim().isEmpty()) {
             return "";
         }
-
-        filePath = filePath.replace('/', '\\');
-
-        int lastSeparator = filePath.lastIndexOf('\\');
-        if (lastSeparator >= 0 && lastSeparator < filePath.length() - 1) {
-            return filePath.substring(lastSeparator + 1);
-        }
-
-        return filePath;
+        Path path = Paths.get(filePath);
+        Path fileName = path.getFileName();
+        return fileName != null ? fileName.toString() : "";
     }
 
     public static String extractSongTitle(String fileName) {
@@ -209,18 +193,15 @@ public class FileUtils {
             title = title.substring(0, lastDot);
         }
 
-        title = title.replaceAll("[_\\-]+", " ")
+        return title.replaceAll("[_\\-]+", " ")
                     .replaceAll("\\s+", " ")
                     .trim();
-
-        return title;
     }
 
     public static boolean isValidFilePath(String filePath) {
         if (filePath == null || filePath.trim().isEmpty()) {
             return false;
         }
-
         try {
             Paths.get(filePath);
             return true;
