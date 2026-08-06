@@ -19,6 +19,11 @@
                   <FontIcon iconLiteral="mdi2p-pause" iconSize="14" />
                </graphic>
             </Button>
+            <Button fx:id="resumeButton" mnemonicParsing="false" onAction="#handleResumeDownload" text="Reanudar" styleClass="button, success" visible="false" managed="false">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2p-play" iconSize="14" />
+               </graphic>
+            </Button>
             <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#handleCancelDownload" text="Cancelar" styleClass="button, danger">
                <graphic>
                   <FontIcon iconLiteral="mdi2c-close-circle" iconSize="14" />
