@@ -33,23 +33,38 @@ public class QueueController {
     private QueueManager queueManager;
     private FilterService filterService;
     private DialogService dialogService;
+    private com.example.interfaz.event.EventPublisher eventPublisher;
 
     @FXML
     void initialize() {
         ServiceFactory serviceFactory = ServiceFactory.getInstance();
         this.filterService = serviceFactory.getFilterService();
         this.dialogService = serviceFactory.getDialogService();
-        this.queueManager = serviceFactory.createQueueManager();
+        this.queueManager = serviceFactory.getQueueManager();
+        this.eventPublisher = serviceFactory.getEventPublisher();
 
         if (queueListView != null) {
             queueListView.setItems(queueItems);
             queueListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         }
 
+        if (this.eventPublisher != null) {
+            this.eventPublisher.subscribe(com.example.interfaz.event.DownloadEvent.QueueUpdated.class, event -> refreshQueue());
+        }
+
         setupEventHandlers();
-        updateQueueCount();
+        refreshQueue();
 
         LOGGER.info("QueueController desacoplado e inyectado correctamente");
+    }
+
+    public void refreshQueue() {
+        Platform.runLater(() -> {
+            if (queueManager != null) {
+                queueItems.setAll(queueManager.getAllItems());
+                updateQueueCount();
+            }
+        });
     }
 
     private void setupEventHandlers() {

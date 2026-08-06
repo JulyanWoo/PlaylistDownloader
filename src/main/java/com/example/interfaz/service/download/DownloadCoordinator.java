@@ -85,6 +85,7 @@ public class DownloadCoordinator implements AutoCloseable {
         boolean added = queueManager.addToQueue(trimmed);
         if (added) {
             LOGGER.info("URL agregada a la cola vía DownloadCoordinator: {}", trimmed);
+            publishEvent(new DownloadEvent.QueueUpdated());
         }
         return added;
     }
@@ -96,6 +97,7 @@ public class DownloadCoordinator implements AutoCloseable {
         if (!queueManager.isEmpty()) {
             queueManager.clearQueue();
             LOGGER.info("Cola limpiada vía DownloadCoordinator");
+            publishEvent(new DownloadEvent.QueueUpdated());
         }
     }
 
@@ -107,6 +109,7 @@ public class DownloadCoordinator implements AutoCloseable {
             boolean removed = queueManager.removeFromQueue(item);
             if (removed) {
                 LOGGER.info("Elemento removido de la cola vía DownloadCoordinator: {}", item);
+                publishEvent(new DownloadEvent.QueueUpdated());
             }
             return removed;
         }

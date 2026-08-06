@@ -122,8 +122,17 @@ public class ServiceFactory {
         return downloadProgressParser;
     }
 
+    private QueueManager queueManager;
+
+    public synchronized QueueManager getQueueManager() {
+        if (queueManager == null) {
+            queueManager = new QueueManager();
+        }
+        return queueManager;
+    }
+
     public QueueManager createQueueManager() {
-        return new QueueManager();
+        return getQueueManager();
     }
 
     public ProgressManager createProgressManager() {
