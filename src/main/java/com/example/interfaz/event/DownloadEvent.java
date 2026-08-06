@@ -95,4 +95,10 @@ public abstract class DownloadEvent {
             super(null);
         }
     }
+
+    public static class QueueUpdated extends DownloadEvent {
+        public QueueUpdated() {
+            super(null);
+        }
+    }
 }
