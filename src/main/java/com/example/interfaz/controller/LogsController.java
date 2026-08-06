@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
@@ -61,7 +60,7 @@ public class LogsController implements Initializable {
 
     private LogService logService;
     private Stage stage;
-    private List<String> allLogLines;
+    private List<com.example.interfaz.model.LogEntry> allLogEntries;
     private Timeline autoRefreshTimeline;
 
     @Override
@@ -78,59 +77,65 @@ public class LogsController implements Initializable {
 
     private void loadLogs() {
         Platform.runLater(() -> {
-            String logs = logService.getAllLogs();
-            allLogLines = Arrays.asList(logs.split("\n"));
+            allLogEntries = logService.getLogEntries();
             applyFiltersAndColors();
         });
     }
 
     private void applyFiltersAndColors() {
-        if (allLogLines == null) {
+        if (allLogEntries == null || logsTextFlow == null) {
             return;
         }
 
-        List<String> filteredLogs = allLogLines.stream()
+        List<com.example.interfaz.model.LogEntry> filteredLogs = allLogEntries.stream()
                 .filter(this::shouldShowLog)
                 .collect(Collectors.toList());
 
         logsTextFlow.getChildren().clear();
 
-        for (String line : filteredLogs) {
-            Text textNode = new Text(line + "\n");
+        for (com.example.interfaz.model.LogEntry entry : filteredLogs) {
+            Text textNode = new Text(entry.getFormattedMessage() + "\n");
 
-            if (line.contains("[ExtractAudio]")) {
-                textNode.setFill(Color.web("#00ff88"));
-            } else if (line.contains("[download]")) {
-                textNode.setFill(Color.web("#ff0055"));
-            } else {
-                textNode.setFill(Color.web("#e2e2e8"));
+            switch (entry.getLevel()) {
+                case ERROR -> textNode.setFill(Color.web("#ff4d4d"));
+                case WARNING -> textNode.setFill(Color.web("#ffaa00"));
+                case SYSTEM -> textNode.setFill(Color.web("#bb86fc"));
+                case DEBUG -> textNode.setFill(Color.web("#a0a0b0"));
+                case INFO -> {
+                    String msg = entry.getMessage();
+                    if (msg.contains("[ExtractAudio]")) {
+                        textNode.setFill(Color.web("#00ff88"));
+                    } else if (msg.contains("[download]")) {
+                        textNode.setFill(Color.web("#4da6ff"));
+                    } else {
+                        textNode.setFill(Color.web("#e2e2e8"));
+                    }
+                }
             }
 
             logsTextFlow.getChildren().add(textNode);
         }
     }
 
-    private boolean shouldShowLog(String logLine) {
-        if (logLine.contains("[ExtractAudio]") && showExtractAudioCheckBox.isSelected()) {
+    private boolean shouldShowLog(com.example.interfaz.model.LogEntry entry) {
+        String msg = entry.getMessage();
+        if (showExtractAudioCheckBox != null && showExtractAudioCheckBox.isSelected() && msg.contains("[ExtractAudio]")) {
             return true;
         }
-        if (logLine.contains("[download]") && showDownloadCheckBox.isSelected()) {
+        if (showDownloadCheckBox != null && showDownloadCheckBox.isSelected() && msg.contains("[download]")) {
             return true;
         }
-        return !logLine.contains("[ExtractAudio]") && !logLine.contains("[download]") && showOtherLogsCheckBox.isSelected();
+        if (showOtherLogsCheckBox != null && showOtherLogsCheckBox.isSelected()) {
+            return !msg.contains("[ExtractAudio]") && !msg.contains("[download]");
+        }
+        return false;
     }
 
     private void startAutoRefresh() {
         if (autoRefreshTimeline != null) {
             autoRefreshTimeline.stop();
         }
-        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
-            if (stage != null && stage.isShowing()) {
-                loadLogs();
-            } else if (autoRefreshTimeline != null) {
-                autoRefreshTimeline.stop();
-            }
-        }));
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> loadLogs()));
         autoRefreshTimeline.setCycleCount(Animation.INDEFINITE);
         autoRefreshTimeline.play();
     }
@@ -145,7 +150,7 @@ public class LogsController implements Initializable {
     private void onClearLogs() {
         logService.clearLogs();
         logsTextFlow.getChildren().clear();
-        allLogLines = null;
+        allLogEntries = null;
         showInfo("Logs limpiados", "Todos los logs han sido eliminados.");
     }
 

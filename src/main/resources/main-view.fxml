@@ -139,23 +139,7 @@
                   <fx:include fx:id="progressView" source="progress-view.fxml" />
 
                   <!-- Sub-vista 3: Logs / Consola -->
-                  <VBox fx:id="logsSection" spacing="12.0" styleClass="card-panel" visible="false" managed="false" VBox.vgrow="ALWAYS">
-                     <children>
-                        <HBox alignment="CENTER_LEFT" spacing="12.0">
-                           <children>
-                              <FontIcon iconLiteral="mdi2c-console" iconSize="18" />
-                              <Label text="Registros del Sistema (Logs)" styleClass="card-title" />
-                              <Region HBox.hgrow="ALWAYS" />
-                              <Button fx:id="showLogsButton" mnemonicParsing="false" onAction="#onShowLogs" text="Abrir Consola en Ventana Separada" styleClass="button, flat">
-                                 <graphic>
-                                    <FontIcon iconLiteral="mdi2o-open-in-new" iconSize="14" />
-                                 </graphic>
-                              </Button>
-                           </children>
-                        </HBox>
-                        <Label text="Haz clic en el botón superior para inspeccionar el historial completo de logs de la aplicación en tiempo real." styleClass="card-subtitle" wrapText="true" />
-                     </children>
-                  </VBox>
+                  <fx:include fx:id="logsSection" source="logs-view.fxml" visible="false" managed="false" />
                </children>
             </StackPane>
 
