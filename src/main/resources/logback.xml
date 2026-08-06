@@ -28,8 +28,14 @@
         <appender-ref ref="FILE" />
     </logger>
     
-    <!-- Logger para JavaFX (menos verboso) -->
+    <!-- Logger for JavaFX (less verbose) -->
     <logger name="javafx" level="WARN" />
+    
+    <!-- Diagnostic: capture every yt-dlp stdout line -->
+    <logger name="com.example.interfaz.service.download.ProcessExecutor" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
     
     <!-- Root logger -->
     <root level="INFO">
