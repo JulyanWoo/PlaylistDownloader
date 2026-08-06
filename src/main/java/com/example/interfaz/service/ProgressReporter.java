@@ -44,10 +44,6 @@ public class ProgressReporter {
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Private handlers
-    // ──────────────────────────────────────────────────────────────────
-
     private void handlePlaylistProgress(String line) {
         Pattern p = Pattern.compile("\\[download\\] Downloading item (\\d+) of (\\d+)");
         Matcher m = p.matcher(line);
