@@ -4,6 +4,7 @@ import com.example.interfaz.exception.DownloadException;
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.download.BinaryResolver;
 import com.example.interfaz.service.download.ProcessExecutor;
+import com.example.interfaz.service.download.SongMetadataService;
 import com.example.interfaz.service.download.YtDlpCommandBuilder;
 import com.example.interfaz.util.FileUtils;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ public class YouTubeDownloadService implements DownloadService {
     private final ProgressReporter progressReporter;
     private final YtDlpCommandBuilder commandBuilder;
     private final ProcessExecutor processExecutor;
+    private final SongMetadataService metadataService;
     private final ExecutorService downloadExecutor;
 
     private final Object downloadLock = new Object();
@@ -32,13 +34,14 @@ public class YouTubeDownloadService implements DownloadService {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     public YouTubeDownloadService() {
-        this(new ProgressReporter(), new YtDlpCommandBuilder(new BinaryResolver()), new ProcessExecutor());
+        this(new ProgressReporter(), new YtDlpCommandBuilder(new BinaryResolver()), new ProcessExecutor(), new SongMetadataService());
     }
 
-    public YouTubeDownloadService(ProgressReporter progressReporter, YtDlpCommandBuilder commandBuilder, ProcessExecutor processExecutor) {
+    public YouTubeDownloadService(ProgressReporter progressReporter, YtDlpCommandBuilder commandBuilder, ProcessExecutor processExecutor, SongMetadataService metadataService) {
         this.progressReporter = progressReporter;
         this.commandBuilder = commandBuilder;
         this.processExecutor = processExecutor;
+        this.metadataService = metadataService;
         this.downloadExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "YouTubeDownloadService-Worker");
             t.setDaemon(true);
@@ -220,30 +223,7 @@ public class YouTubeDownloadService implements DownloadService {
 
     @Override
     public Song getSongInfo(String url) {
-        Song song = new Song();
-        song.setUrl(url);
-
-        String title = url;
-        try {
-            URI uri = URI.create(url);
-            String query = uri.getQuery();
-            if (query != null && query.contains("v=")) {
-                for (String param : query.split("&")) {
-                    if (param.startsWith("v=")) {
-                        title = param.substring(2);
-                        break;
-                    }
-                }
-            } else {
-                String path = uri.getPath();
-                if (path != null && !path.isEmpty()) {
-                    title = path.substring(path.lastIndexOf('/') + 1);
-                }
-            }
-        } catch (Exception ignored) {}
-
-        song.setTitle("YouTube: " + (title.isEmpty() ? url : title));
-        return song;
+        return metadataService.getSongInfo(url);
     }
 
     @Override
