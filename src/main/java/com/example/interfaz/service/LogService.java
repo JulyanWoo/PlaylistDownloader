@@ -1,22 +1,25 @@
 package com.example.interfaz.service;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-public class LogService {
+public final class LogService {
     private static LogService instance;
-    private final List<String> logs;
+    private final Deque<String> logs;
     private final DateTimeFormatter formatter;
-    private PrintStream originalOut;
-    private PrintStream originalErr;
+    private final PrintStream originalOut;
+    private final PrintStream originalErr;
     private boolean isCapturing = false;
 
     private LogService() {
-        logs = new CopyOnWriteArrayList<>();
+        logs = new ArrayDeque<>();
         formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         originalOut = System.out;
         originalErr = System.err;
@@ -30,15 +33,15 @@ public class LogService {
         return instance;
     }
 
-    public void startCapturing() {
+    public synchronized void startCapturing() {
         if (!isCapturing) {
             isCapturing = true;
 
             PrintStream customOut = new PrintStream(new OutputStream() {
-                private StringBuilder buffer = new StringBuilder();
+                private final StringBuilder buffer = new StringBuilder();
 
                 @Override
-                public void write(int b) throws IOException {
+                public synchronized void write(int b) throws IOException {
                     originalOut.write(b);
 
                     char c = (char) b;
@@ -47,18 +50,18 @@ public class LogService {
                         if (!line.trim().isEmpty()) {
                             addLog("[INFO] " + line);
                         }
-                        buffer = new StringBuilder();
+                        buffer.setLength(0);
                     } else {
                         buffer.append(c);
                     }
                 }
-            });
+            }, true);
 
             PrintStream customErr = new PrintStream(new OutputStream() {
-                private StringBuilder buffer = new StringBuilder();
+                private final StringBuilder buffer = new StringBuilder();
 
                 @Override
-                public void write(int b) throws IOException {
+                public synchronized void write(int b) throws IOException {
                     originalErr.write(b);
 
                     char c = (char) b;
@@ -67,12 +70,12 @@ public class LogService {
                         if (!line.trim().isEmpty()) {
                             addLog("[ERROR] " + line);
                         }
-                        buffer = new StringBuilder();
+                        buffer.setLength(0);
                     } else {
                         buffer.append(c);
                     }
                 }
-            });
+            }, true);
 
             System.setOut(customOut);
             System.setErr(customErr);
@@ -81,7 +84,7 @@ public class LogService {
         }
     }
 
-    public void stopCapturing() {
+    public synchronized void stopCapturing() {
         if (isCapturing) {
             isCapturing = false;
             System.setOut(originalOut);
@@ -90,13 +93,13 @@ public class LogService {
         }
     }
 
-    public void addLog(String message) {
+    public synchronized void addLog(String message) {
         String timestamp = LocalDateTime.now().format(formatter);
         String logEntry = String.format("[%s] %s", timestamp, message);
-        logs.add(logEntry);
+        logs.addLast(logEntry);
 
-        if (logs.size() > 1000) {
-            logs.remove(0);
+        while (logs.size() > 1000) {
+            logs.removeFirst();
         }
     }
 
@@ -116,15 +119,19 @@ public class LogService {
         addLog("[DEBUG] " + message);
     }
 
-    public String getAllLogs() {
+    public synchronized String getAllLogs() {
         if (logs.isEmpty()) {
-            return "No hay logs disponibles.\n\nEste panel mostrará todos los logs del sistema incluyendo:\n" +
-                   "- Mensajes de información\n" +
-                   "- Errores del sistema\n" +
-                   "- Advertencias\n" +
-                   "- Logs de depuración\n" +
-                   "- Salida de la consola\n\n" +
-                   "Los logs se actualizan automáticamente cada 2 segundos.";
+            return """
+                   No hay logs disponibles.
+                   
+                   Este panel mostrar\u00e1 todos los logs del sistema incluyendo:
+                   - Mensajes de informaci\u00f3n
+                   - Errores del sistema
+                   - Advertencias
+                   - Logs de depuraci\u00f3n
+                   - Salida de la consola
+                   
+                   Los logs se actualizan autom\u00e1ticamente cada 2 segundos.""";
         }
 
         StringBuilder sb = new StringBuilder();
@@ -134,20 +141,20 @@ public class LogService {
         return sb.toString();
     }
 
-    public List<String> getLogsList() {
+    public synchronized List<String> getLogsList() {
         return new ArrayList<>(logs);
     }
 
-    public void clearLogs() {
+    public synchronized void clearLogs() {
         logs.clear();
         addLog("[SYSTEM] Logs limpiados por el usuario");
     }
 
-    public int getLogsCount() {
+    public synchronized int getLogsCount() {
         return logs.size();
     }
 
-    public boolean isCapturing() {
+    public synchronized boolean isCapturing() {
         return isCapturing;
     }
 
