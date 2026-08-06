@@ -1,166 +1,159 @@
 package com.example.interfaz.download;
 
-import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
-
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Queue;
+import java.util.Set;
 
 public class QueueManager {
 
-    private final ConcurrentLinkedQueue<String> downloadQueue;
-    private final ObservableList<String> queueItems;
-    private final ListView<String> queueListView;
-    private final AtomicInteger totalItems;
-    private final AtomicInteger processedItems;
+    private final Queue<String> downloadQueue;
+    private final Set<String> queuedUrls;
+    private final Set<String> processingUrls;
+    private int totalDownloads;
+    private int processedItems;
+    private int failedItems;
 
-    public QueueManager(ListView<String> queueListView) {
-        this.downloadQueue = new ConcurrentLinkedQueue<>();
-        this.queueItems = FXCollections.observableArrayList();
-        this.queueListView = queueListView;
-        this.totalItems = new AtomicInteger(0);
-        this.processedItems = new AtomicInteger(0);
-
-        initializeQueue();
+    public QueueManager() {
+        this.downloadQueue = new LinkedList<>();
+        this.queuedUrls = new HashSet<>();
+        this.processingUrls = new HashSet<>();
+        this.totalDownloads = 0;
+        this.processedItems = 0;
+        this.failedItems = 0;
     }
 
-    private void initializeQueue() {
-        queueListView.setItems(queueItems);
-        queueListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-    }
-
-    public boolean addToQueue(String url) {
+    public synchronized boolean addToQueue(String url) {
         if (url == null || url.trim().isEmpty()) {
             return false;
         }
 
         String trimmedUrl = url.trim();
 
-        if (downloadQueue.contains(trimmedUrl)) {
-            return false;
+        if (!processingUrls.contains(trimmedUrl) && queuedUrls.add(trimmedUrl)) {
+            downloadQueue.offer(trimmedUrl);
+            totalDownloads++;
+            return true;
         }
 
-        downloadQueue.offer(trimmedUrl);
-        totalItems.incrementAndGet();
-
-        Platform.runLater(() -> {
-            queueItems.add(trimmedUrl);
-        });
-
-        return true;
+        return false;
     }
 
-    public String pollNext() {
+    public synchronized String pollNext() {
         String url = downloadQueue.poll();
         if (url != null) {
-            processedItems.incrementAndGet();
-            Platform.runLater(() -> {
-                queueItems.remove(url);
-            });
+            queuedUrls.remove(url);
+            processingUrls.add(url);
         }
         return url;
     }
 
-    public String getNextUrl() {
-        return downloadQueue.peek();
-    }
-
-    public boolean removeFromQueue(String url) {
+    public synchronized boolean removeFromQueue(String url) {
         if (url == null) {
             return false;
         }
 
-        boolean removed = downloadQueue.remove(url);
+        String trimmedUrl = url.trim();
+        boolean removed = downloadQueue.remove(trimmedUrl);
         if (removed) {
-            Platform.runLater(() -> {
-                queueItems.remove(url);
-            });
-            totalItems.decrementAndGet();
+            queuedUrls.remove(trimmedUrl);
+            if (totalDownloads > 0) {
+                totalDownloads--;
+            }
         }
         return removed;
     }
 
-    public void markAsCompleted(String url) {
+    public synchronized void markAsCompleted(String url) {
         if (url != null) {
-            removeFromQueue(url);
-            processedItems.incrementAndGet();
+            if (processingUrls.remove(url.trim())) {
+                processedItems++;
+            }
         }
     }
 
-    public boolean isEmpty() {
+    public synchronized void markAsFailed(String url) {
+        if (url != null) {
+            if (processingUrls.remove(url.trim())) {
+                failedItems++;
+            }
+        }
+    }
+
+    public synchronized boolean isEmpty() {
         return downloadQueue.isEmpty();
     }
 
-    public int size() {
+    public synchronized int size() {
         return downloadQueue.size();
     }
 
-    public int getQueueSize() {
-        return queueItems.size();
-    }
-
-    public void clearQueue() {
+    public synchronized void clearQueue() {
         downloadQueue.clear();
-        totalItems.set(0);
-        processedItems.set(0);
-
-        Platform.runLater(() -> {
-            queueItems.clear();
-        });
+        queuedUrls.clear();
+        totalDownloads = processingUrls.size() + processedItems + failedItems;
     }
 
-    public int removeSelectedItems() {
-        List<String> selectedItems = new ArrayList<>(queueListView.getSelectionModel().getSelectedItems());
-
-        int removedCount = selectedItems.size();
-        for (String item : selectedItems) {
-            downloadQueue.remove(item);
-            totalItems.decrementAndGet();
-        }
-
-        Platform.runLater(() -> {
-            queueItems.removeAll(selectedItems);
-        });
-
-        return removedCount;
+    public synchronized void clearAll() {
+        downloadQueue.clear();
+        queuedUrls.clear();
+        processingUrls.clear();
+        totalDownloads = 0;
+        processedItems = 0;
+        failedItems = 0;
     }
 
-    public double getOverallProgress() {
-        int total = totalItems.get();
-        if (total == 0) {
+    public synchronized double getOverallProgress() {
+        if (totalDownloads == 0) {
             return 0.0;
         }
-        return (double) processedItems.get() / total;
+        return (double) (processedItems + failedItems) / totalDownloads;
     }
 
-    public int getProcessedCount() {
-        return processedItems.get();
+    public synchronized int getProcessedCount() {
+        return processedItems;
     }
 
-    public int getTotalCount() {
-        return totalItems.get();
+    public synchronized int getFailedCount() {
+        return failedItems;
     }
 
-    public void resetProgress() {
-        processedItems.set(0);
-        totalItems.set(downloadQueue.size());
+    public synchronized int getTotalCount() {
+        return totalDownloads;
     }
 
-    public List<String> getAllItems() {
+    public synchronized int getTotalDownloads() {
+        return totalDownloads;
+    }
+
+    public synchronized void resetProgress() {
+        processedItems = 0;
+        failedItems = 0;
+        totalDownloads = downloadQueue.size() + processingUrls.size();
+    }
+
+    public synchronized List<String> getAllItems() {
         return new ArrayList<>(downloadQueue);
     }
 
-    public String getQueueStatus() {
-        return String.format("Cola: %d elementos, %d procesados", 
-                           size(), getProcessedCount());
+    public synchronized String getQueueStatus() {
+        return String.format("Pendientes: %d, Descargando: %d, Completados: %d, Fallidos: %d", 
+                           downloadQueue.size(), processingUrls.size(), processedItems, failedItems);
     }
 
-    public boolean contains(String url) {
-        return downloadQueue.contains(url);
+    public synchronized boolean contains(String url) {
+        if (url == null) return false;
+        String trimmed = url.trim();
+        return queuedUrls.contains(trimmed) || processingUrls.contains(trimmed);
+    }
+
+    public synchronized boolean isQueued(String url) {
+        return url != null && queuedUrls.contains(url.trim());
+    }
+
+    public synchronized boolean isProcessing(String url) {
+        return url != null && processingUrls.contains(url.trim());
     }
 }
