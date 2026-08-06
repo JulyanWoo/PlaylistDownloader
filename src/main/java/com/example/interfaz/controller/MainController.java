@@ -15,7 +15,6 @@ import com.example.interfaz.service.ui.FolderChooserService;
 import com.example.interfaz.service.ui.NavigationService;
 import com.example.interfaz.service.ui.ThemeService;
 import com.example.interfaz.service.ui.WindowManager;
-import com.example.interfaz.util.FileUtils;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -25,27 +24,38 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-@SuppressWarnings({"unused", "FXML"})
+@SuppressWarnings({ "unused", "FXML" })
 public class MainController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
 
     // Views automatically included by FXMLLoader via <fx:include>
-    @FXML VBox queueView;
-    @FXML QueueController queueViewController;
+    @FXML
+    VBox queueView;
+    @FXML
+    QueueController queueViewController;
 
-    @FXML VBox progressView;
-    @FXML ProgressController progressViewController;
+    @FXML
+    VBox progressView;
+    @FXML
+    ProgressController progressViewController;
 
-    @FXML VBox logsSection;
+    @FXML
+    VBox logsSection;
 
     // Header and sidebar components
-    @FXML FontIcon themeIcon;
-    @FXML Button btnNavQueue;
-    @FXML Button btnNavDownloads;
-    @FXML Button btnNavLogs;
-    @FXML TextField inputField;
-    @FXML Label musicFolderLabel;
+    @FXML
+    FontIcon themeIcon;
+    @FXML
+    Button btnNavQueue;
+    @FXML
+    Button btnNavDownloads;
+    @FXML
+    Button btnNavLogs;
+    @FXML
+    TextField inputField;
+    @FXML
+    Label musicFolderLabel;
 
     // Services injected from ServiceFactory
     private NavigationService navigationService;
@@ -75,10 +85,13 @@ public class MainController {
             if (progressViewController != null) {
                 progressParser.setListener(progressViewController);
                 progressViewController.setPauseAction(downloadCoordinator::pauseDownload);
+                progressViewController.setResumeAction(downloadCoordinator::resumeDownload);
                 progressViewController.setCancelAction(() -> {
                     downloadCoordinator.cancelDownload();
                     progressViewController.markDownloadCancelled();
-                    if (queueViewController != null) queueViewController.setControlsEnabled(true);
+                    progressViewController.togglePauseResumeButtons(false);
+                    if (queueViewController != null)
+                        queueViewController.setControlsEnabled(true);
                 });
             }
 
@@ -103,38 +116,36 @@ public class MainController {
 
     private void initializeCoordinator(ServiceFactory serviceFactory) {
         this.downloadCoordinator = new DownloadCoordinator(
-            downloadService,
-            queueViewController.getQueueManager(),
-            serviceFactory.getEventPublisher()
-        );
+                downloadService,
+                queueViewController.getQueueManager(),
+                serviceFactory.getEventPublisher());
         serviceFactory.registerDownloadCoordinator(downloadCoordinator);
     }
 
     private void setupEventSubscriptions(ServiceFactory serviceFactory) {
         var eventPublisher = serviceFactory.getEventPublisher();
         if (eventPublisher != null) {
-            eventPublisher.subscribe(DownloadEvent.StateChanged.class, event ->
-                Platform.runLater(() -> {
-                    if (queueViewController != null) {
-                        queueViewController.setControlsEnabled(!event.isDownloading());
-                    }
-                    if (!event.isDownloading() && progressViewController != null && downloadCoordinator.isQueueEmpty()) {
-                        progressViewController.markDownloadCompleted();
-                    }
-                })
-            );
+            eventPublisher.subscribe(DownloadEvent.StateChanged.class, event -> Platform.runLater(() -> {
+                if (queueViewController != null) {
+                    queueViewController.setControlsEnabled(!event.isDownloading());
+                }
+                if (progressViewController != null) {
+                    progressViewController.togglePauseResumeButtons(event.isPaused());
+                }
+                if (!event.isDownloading() && progressViewController != null && downloadCoordinator.isQueueEmpty()) {
+                    progressViewController.markDownloadCompleted();
+                    progressViewController.togglePauseResumeButtons(false);
+                }
+            }));
 
-            eventPublisher.subscribe(DownloadEvent.QueueEmpty.class, event ->
-                Platform.runLater(() -> dialogService.showInfo("Cola vacía", "Agrega URLs a la cola antes de iniciar la descarga."))
-            );
+            eventPublisher.subscribe(DownloadEvent.QueueEmpty.class, event -> Platform.runLater(
+                    () -> dialogService.showInfo("Cola vacía", "Agrega URLs a la cola antes de iniciar la descarga.")));
 
-            eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, event ->
-                Platform.runLater(() -> {
-                    if (progressViewController != null && event.getSong() != null) {
-                        progressViewController.updateStatus("✅ " + event.getSong().getTitle() + " completado");
-                    }
-                })
-            );
+            eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, event -> Platform.runLater(() -> {
+                if (progressViewController != null && event.getSong() != null) {
+                    progressViewController.updateStatus("✅ " + event.getSong().getTitle() + " completado");
+                }
+            }));
         }
     }
 
@@ -151,9 +162,20 @@ public class MainController {
         }
     }
 
-    @FXML void onNavQueue() { navigationService.navigateTo(btnNavQueue, queueView, progressView, logsSection); }
-    @FXML void onNavDownloads() { navigationService.navigateTo(btnNavDownloads, progressView, queueView, logsSection); }
-    @FXML void onNavLogs() { navigationService.navigateTo(btnNavLogs, logsSection, queueView, progressView); }
+    @FXML
+    void onNavQueue() {
+        navigationService.navigateTo(btnNavQueue, queueView, progressView, logsSection);
+    }
+
+    @FXML
+    void onNavDownloads() {
+        navigationService.navigateTo(btnNavDownloads, progressView, queueView, logsSection);
+    }
+
+    @FXML
+    void onNavLogs() {
+        navigationService.navigateTo(btnNavLogs, logsSection, queueView, progressView);
+    }
 
     @FXML
     void onStartDownload() {
@@ -161,12 +183,28 @@ public class MainController {
         if (progressViewController != null) {
             progressViewController.showProgressSection();
             progressViewController.updateStatus("🚀 Iniciando descarga...");
+            progressViewController.togglePauseResumeButtons(false);
         }
         downloadCoordinator.startDownload();
     }
 
-    @FXML void onToggleTheme() { themeService.toggleTheme(themeIcon); }
-    @FXML void onShowLogs() { windowManager.showLogsWindow(primaryStage); }
+    @FXML
+    private void onResumeClick() {
+        downloadCoordinator.resume();
+        if (progressViewController != null) {
+            progressViewController.togglePauseResumeButtons(false);
+        }
+    }
+
+    @FXML
+    void onToggleTheme() {
+        themeService.toggleTheme(themeIcon);
+    }
+
+    @FXML
+    void onShowLogs() {
+        windowManager.showLogsWindow(primaryStage);
+    }
 
     @FXML
     void onSelectMusicFolder() {
@@ -184,10 +222,15 @@ public class MainController {
         }
     }
 
+    public QueueController getQueueController() {
+        return queueViewController;
+    }
 
+    public ProgressController getProgressController() {
+        return progressViewController;
+    }
 
-
-    public QueueController getQueueController() { return queueViewController; }
-    public ProgressController getProgressController() { return progressViewController; }
-    public void setStage(Stage stage) { this.primaryStage = stage; }
+    public void setStage(Stage stage) {
+        this.primaryStage = stage;
+    }
 }
