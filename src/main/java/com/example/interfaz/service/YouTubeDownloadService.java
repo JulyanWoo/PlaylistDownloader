@@ -1,19 +1,20 @@
 package com.example.interfaz.service;
 
+import com.example.interfaz.exception.DownloadException;
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.download.BinaryResolver;
+import com.example.interfaz.service.download.ProcessExecutor;
 import com.example.interfaz.service.download.YtDlpCommandBuilder;
 import com.example.interfaz.util.FileUtils;
-import javafx.concurrent.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -23,169 +24,175 @@ public class YouTubeDownloadService implements DownloadService {
 
     private final ProgressReporter progressReporter;
     private final YtDlpCommandBuilder commandBuilder;
-    private final Object pauseLock = new Object();
+    private final ProcessExecutor processExecutor;
+    private final ExecutorService downloadExecutor;
 
-    private Process currentProcess;
-    private final AtomicBoolean isPaused = new AtomicBoolean(false);
-    private final AtomicBoolean shouldStop = new AtomicBoolean(false);
-
-    private static YouTubeDownloadService instance;
+    private final Object downloadLock = new Object();
+    private volatile CompletableFuture<Boolean> currentDownload;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     public YouTubeDownloadService() {
-        this(new ProgressReporter(), new YtDlpCommandBuilder(new BinaryResolver()));
+        this(new ProgressReporter(), new YtDlpCommandBuilder(new BinaryResolver()), new ProcessExecutor());
     }
 
-    public YouTubeDownloadService(ProgressReporter progressReporter, YtDlpCommandBuilder commandBuilder) {
+    public YouTubeDownloadService(ProgressReporter progressReporter, YtDlpCommandBuilder commandBuilder, ProcessExecutor processExecutor) {
         this.progressReporter = progressReporter;
         this.commandBuilder = commandBuilder;
-    }
-
-    public static synchronized YouTubeDownloadService getInstance() {
-        if (instance == null) {
-            instance = new YouTubeDownloadService();
-        }
-        return instance;
+        this.processExecutor = processExecutor;
+        this.downloadExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "YouTubeDownloadService-Worker");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     public CompletableFuture<Boolean> downloadPlaylist(String playlistUrl, String outputDirectory, boolean newPlaylist) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                int startFromVideo = newPlaylist ? 1 : FileUtils.loadProgress();
-                if (!newPlaylist) {
-                    notifyProgress("Reanudando la descarga desde la canción #" + startFromVideo);
-                }
-
-                List<String> cmd = commandBuilder.buildPlaylistCommand(playlistUrl, outputDirectory, startFromVideo);
-                return executeProcess(cmd);
-            } catch (Exception e) {
-                LOGGER.error("Error durante la descarga de playlist", e);
-                notifyProgress("Error: " + e.getMessage());
-                return false;
-            } finally {
-                resetDownloadState();
+        if (closed.get()) {
+            throw new IllegalStateException("Servicio de descarga cerrado.");
+        }
+        synchronized (downloadLock) {
+            if (isDownloading()) {
+                throw new IllegalStateException("Ya existe una descarga en curso.");
             }
-        });
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            this.currentDownload = future;
+
+            downloadExecutor.execute(() -> {
+                try {
+                    int startFromVideo = newPlaylist ? 1 : FileUtils.loadProgress();
+                    if (!newPlaylist) {
+                        notifyProgress("Reanudando la descarga desde la canción #" + startFromVideo);
+                    }
+
+                    List<String> cmd = commandBuilder.buildPlaylistCommand(playlistUrl, outputDirectory, startFromVideo);
+                    boolean result = executeProcess(cmd);
+                    future.complete(result);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    future.completeExceptionally(new DownloadException("Falla en descarga de playlist: Operación cancelada", e));
+                } catch (IOException e) {
+                    LOGGER.error("Error de E/S en descarga de playlist", e);
+                    notifyProgress("Error: " + e.getMessage());
+                    future.completeExceptionally(new DownloadException("Falla en descarga de playlist: " + e.getMessage(), e));
+                } catch (Exception e) {
+                    future.completeExceptionally(new DownloadException("Falla en descarga de playlist: " + e.getMessage(), e));
+                } finally {
+                    synchronized (downloadLock) {
+                        if (currentDownload == future) {
+                            currentDownload = null;
+                        }
+                    }
+                }
+            });
+            return future;
+        }
     }
 
     public CompletableFuture<Boolean> downloadSong(String url) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                List<String> cmd = commandBuilder.buildSingleSongCommand(url, FileUtils.getMusicDirectory());
-                return executeProcess(cmd);
-            } catch (Exception e) {
-                LOGGER.error("Error durante la descarga de canción", e);
-                notifyProgress("Error: " + e.getMessage());
-                return false;
-            } finally {
-                resetDownloadState();
+        return downloadSong(url, FileUtils.getMusicDirectory());
+    }
+
+    @Override
+    public CompletableFuture<Boolean> downloadSong(String url, String outputPath) {
+        if (closed.get()) {
+            throw new IllegalStateException("Servicio de descarga cerrado.");
+        }
+        synchronized (downloadLock) {
+            if (isDownloading()) {
+                throw new IllegalStateException("Ya existe una descarga activa.");
             }
-        });
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            this.currentDownload = future;
+
+            downloadExecutor.execute(() -> {
+                try {
+                    boolean result = downloadSongSync(url, outputPath);
+                    future.complete(result);
+                } catch (DownloadException e) {
+                    if (e.getCause() instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
+                    future.completeExceptionally(e);
+                } catch (Exception e) {
+                    future.completeExceptionally(new DownloadException("Error descargando canción (" + url + "): " + e.getMessage(), e));
+                } finally {
+                    synchronized (downloadLock) {
+                        if (currentDownload == future) {
+                            currentDownload = null;
+                        }
+                    }
+                }
+            });
+            return future;
+        }
+    }
+
+    public boolean downloadSongSync(String url, String outputPath) {
+        try {
+            String outputDir = (outputPath == null || outputPath.trim().isEmpty()) ? FileUtils.getMusicDirectory() : outputPath;
+            List<String> cmd = commandBuilder.buildSingleSongCommand(url, outputDir);
+            return executeProcess(cmd);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.info("Descarga cancelada por interrupción");
+            notifyProgress("Error: Descarga cancelada");
+            throw new DownloadException("Descarga cancelada por interrupción", e);
+        } catch (IOException e) {
+            LOGGER.error("Error de E/S durante la descarga de canción", e);
+            notifyProgress("Error: " + e.getMessage());
+            throw new DownloadException("Error de E/S al ejecutar proceso de descarga: " + e.getMessage(), e);
+        }
     }
 
     private boolean executeProcess(List<String> cmd) throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd);
-        processBuilder.redirectErrorStream(true);
-
-        currentProcess = processBuilder.start();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null && !shouldStop.get()) {
-                handlePauseState();
-                if (shouldStop.get()) {
-                    break;
-                }
-                notifyProgress(line);
-                processDownloadLine(line);
-            }
-        }
-
-        int exitCode = currentProcess.waitFor();
-        boolean success = exitCode == 0 && !shouldStop.get();
-
-        if (success) {
-            notifyProgress("Descarga completada exitosamente");
-        } else if (shouldStop.get()) {
-            notifyProgress("Descarga cancelada por el usuario");
-        } else {
-            notifyProgress("Error en la descarga (código: " + exitCode + ")");
-        }
-
-        return success;
+        return processExecutor.execute(
+            cmd,
+            progressReporter::processDownloadLine,
+            this::notifyProgress
+        );
     }
 
+    @Override
     public void pauseDownload() {
-        this.isPaused.set(true);
+        processExecutor.pause();
         notifyProgress("Descarga pausada");
         LOGGER.info("Descarga pausada");
     }
 
+    @Override
     public void resumeDownload() {
-        this.isPaused.set(false);
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
+        processExecutor.resume();
         notifyProgress("Descarga reanudada");
         LOGGER.info("Descarga reanudada");
     }
 
+    @Override
     public void stopDownload() {
-        this.shouldStop.set(true);
-        this.isPaused.set(false);
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
+        CompletableFuture<Boolean> future;
+        synchronized (downloadLock) {
+            future = currentDownload;
+            currentDownload = null;
         }
 
-        if (currentProcess != null && currentProcess.isAlive()) {
-            try {
-                currentProcess.descendants().forEach(ProcessHandle::destroyForcibly);
-            } catch (Exception e) {
-                LOGGER.warn("Error cancelando subprocesos hijos: {}", e.getMessage());
-            }
-            currentProcess.destroyForcibly();
-            notifyProgress("Descarga detenida");
-            LOGGER.info("Proceso de descarga y subprocesos hijos terminados forzosamente");
+        processExecutor.stop();
+
+        if (future != null) {
+            future.cancel(true);
         }
+        notifyProgress("Descarga detenida");
+        LOGGER.info("Proceso de descarga y subprocesos terminados forzosamente");
     }
 
     public boolean isPaused() {
-        return isPaused.get();
-    }
-
-    public boolean shouldStop() {
-        return shouldStop.get();
+        return processExecutor.isPaused();
     }
 
     public boolean isDownloading() {
-        return currentProcess != null && currentProcess.isAlive();
+        return processExecutor.isAlive() || (currentDownload != null && !currentDownload.isDone());
     }
 
     public void setProgressCallback(Consumer<String> callback) {
         this.progressReporter.setProgressCallback(callback);
-    }
-
-    private void processDownloadLine(String line) {
-        progressReporter.processDownloadLine(line);
-    }
-
-    private void handlePauseState() {
-        synchronized (pauseLock) {
-            while (isPaused.get() && !shouldStop.get()) {
-                try {
-                    pauseLock.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    shouldStop.set(true);
-                    break;
-                }
-            }
-        }
-    }
-
-    private void resetDownloadState() {
-        this.currentProcess = null;
-        this.isPaused.set(false);
-        this.shouldStop.set(false);
     }
 
     private void notifyProgress(String message) {
@@ -193,46 +200,64 @@ public class YouTubeDownloadService implements DownloadService {
     }
 
     @Override
-    public Task<Void> downloadSong(String url, String outputPath) {
-        return new Task<Void>() {
-            @Override
-            protected Void call() throws Exception {
-                try {
-                    String outputDir = (outputPath == null || outputPath.trim().isEmpty()) ? FileUtils.getMusicDirectory() : outputPath;
-                    List<String> cmd = commandBuilder.buildSingleSongCommand(url, outputDir);
-                    executeProcess(cmd);
-                } catch (Exception e) {
-                    LOGGER.error("Error durante la descarga de canción vía Task", e);
-                    notifyProgress("Error: " + e.getMessage());
-                    throw e;
-                } finally {
-                    resetDownloadState();
-                }
-                return null;
-            }
-        };
-    }
-
-    @Override
     public boolean canHandle(String url) {
-        return url != null && (url.contains("youtube.com") || url.contains("youtu.be"));
+        if (url == null || url.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            URI uri = URI.create(url.trim());
+            String host = uri.getHost();
+            if (host == null) {
+                return false;
+            }
+            String lowerHost = host.toLowerCase();
+            return lowerHost.equals("youtube.com") || lowerHost.endsWith(".youtube.com")
+                || lowerHost.equals("youtu.be") || lowerHost.endsWith(".youtu.be");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
     public Song getSongInfo(String url) {
         Song song = new Song();
         song.setUrl(url);
-        song.setTitle("Canción desde " + url);
+
+        String title = url;
+        try {
+            URI uri = URI.create(url);
+            String query = uri.getQuery();
+            if (query != null && query.contains("v=")) {
+                for (String param : query.split("&")) {
+                    if (param.startsWith("v=")) {
+                        title = param.substring(2);
+                        break;
+                    }
+                }
+            } else {
+                String path = uri.getPath();
+                if (path != null && !path.isEmpty()) {
+                    title = path.substring(path.lastIndexOf('/') + 1);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        song.setTitle("YouTube: " + (title.isEmpty() ? url : title));
         return song;
     }
 
     @Override
-    public void cancelAllDownloads() {
+    public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
         stopDownload();
-    }
-
-    @Override
-    public boolean hasActiveDownloads() {
-        return isDownloading();
+        downloadExecutor.shutdownNow();
+        try {
+            processExecutor.close();
+        } catch (Exception e) {
+            LOGGER.warn("Error al cerrar ProcessExecutor: {}", e.getMessage());
+        }
+        LOGGER.info("YouTubeDownloadService destruido y Executor liberado");
     }
 }
