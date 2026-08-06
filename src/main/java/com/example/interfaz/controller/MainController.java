@@ -1,29 +1,41 @@
 package com.example.interfaz.controller;
 
-import com.example.interfaz.service.*;
-import com.example.interfaz.service.YouTubeDownloadService;
-import com.example.interfaz.factory.ServiceFactory;
+import java.io.File;
+import java.io.IOException;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.example.interfaz.config.ConfigurationManager;
+import com.example.interfaz.factory.ServiceFactory;
+import com.example.interfaz.service.DownloadService;
+import com.example.interfaz.service.LogService;
+import com.example.interfaz.service.YouTubeDownloadService;
 import com.example.interfaz.util.FileUtils;
+
+import atlantafx.base.theme.PrimerDark;
+import atlantafx.base.theme.PrimerLight;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import org.kordamp.ikonli.javafx.FontIcon;
 
-import java.io.File;
-import java.io.IOException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+@SuppressWarnings("unused")
 public class MainController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
@@ -31,9 +43,14 @@ public class MainController {
     private QueueController queueController;
     private ProgressController progressController;
 
-    @FXML private VBox rootNode;
+    @FXML private BorderPane rootNode;
     @FXML private FontIcon themeIcon;
+    @FXML private Button themeToggleButton;
     private boolean isDarkMode = true;
+
+    @FXML private Button btnNavQueue;
+    @FXML private Button btnNavDownloads;
+    @FXML private Button btnNavLogs;
 
     @FXML private TextField inputField;
     @FXML private Button addButton;
@@ -55,6 +72,7 @@ public class MainController {
     @FXML private Button resetFolderButton;
 
     @FXML private VBox progressSection;
+    @FXML private VBox logsSection;
     @FXML private Label currentSongLabel;
     @FXML private Label overallProgressLabel;
     @FXML private Label overallPercentageLabel;
@@ -85,8 +103,8 @@ public class MainController {
 
             this.downloadService = serviceFactory.getDownloadService();
 
-            if (downloadService instanceof YouTubeDownloadService) {
-                ((YouTubeDownloadService) downloadService).setProgressCallback(this::handleProgressUpdate);
+            if (downloadService instanceof YouTubeDownloadService ytService) {
+                ytService.setProgressCallback(this::handleProgressUpdate);
             }
 
             initializeSubControllers();
@@ -166,6 +184,47 @@ public class MainController {
     }
 
     @FXML
+    private void onNavQueue() {
+        setActiveSection(btnNavQueue, queueSection);
+    }
+
+    @FXML
+    private void onNavDownloads() {
+        setActiveSection(btnNavDownloads, progressSection);
+    }
+
+    @FXML
+    private void onNavLogs() {
+        setActiveSection(btnNavLogs, logsSection);
+    }
+
+    private void setActiveSection(Button activeButton, VBox activeSection) {
+        if (btnNavQueue != null) btnNavQueue.getStyleClass().remove("active");
+        if (btnNavDownloads != null) btnNavDownloads.getStyleClass().remove("active");
+        if (btnNavLogs != null) btnNavLogs.getStyleClass().remove("active");
+
+        if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
+            activeButton.getStyleClass().add("active");
+        }
+
+        if (queueSection != null) {
+            boolean isQueue = (queueSection == activeSection);
+            queueSection.setVisible(isQueue);
+            queueSection.setManaged(isQueue);
+        }
+        if (progressSection != null) {
+            boolean isProgress = (progressSection == activeSection);
+            progressSection.setVisible(isProgress);
+            progressSection.setManaged(isProgress);
+        }
+        if (logsSection != null) {
+            boolean isLogs = (logsSection == activeSection);
+            logsSection.setVisible(isLogs);
+            logsSection.setManaged(isLogs);
+        }
+    }
+
+    @FXML
     private void onClearQueue() {
         queueController.handleClearQueue();
     }
@@ -185,6 +244,7 @@ public class MainController {
     }
 
     private void startDownloadProcess() {
+        onNavDownloads();
         progressController.showProgressSection();
         adjustWindowSizeForDownload();
         progressController.updateStatus("🚀 Iniciando descarga...");
@@ -501,26 +561,18 @@ public class MainController {
     @FXML
     private void onToggleTheme() {
         isDarkMode = !isDarkMode;
-        if (rootNode != null) {
-            Scene scene = rootNode.getScene();
-            if (scene != null) {
-                var styleClass = scene.getRoot().getStyleClass();
-                if (isDarkMode) {
-                    styleClass.remove("light-theme");
-                    if (themeIcon != null) {
-                        themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
-                    }
-                    LOGGER.info("Cambiado a Modo Oscuro");
-                } else {
-                    if (!styleClass.contains("light-theme")) {
-                        styleClass.add("light-theme");
-                    }
-                    if (themeIcon != null) {
-                        themeIcon.setIconLiteral("mdi2w-weather-sunny");
-                    }
-                    LOGGER.info("Cambiado a Modo Claro");
-                }
+        if (isDarkMode) {
+            javafx.application.Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+            if (themeIcon != null) {
+                themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
             }
+            LOGGER.info("Cambiado a Modo Oscuro (Primer Dark)");
+        } else {
+            javafx.application.Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+            if (themeIcon != null) {
+                themeIcon.setIconLiteral("mdi2w-weather-sunny");
+            }
+            LOGGER.info("Cambiado a Modo Claro (Primer Light)");
         }
     }
 }

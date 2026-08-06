@@ -1,5 +1,6 @@
 package com.example.interfaz.app;
 
+import atlantafx.base.theme.PrimerDark;
 import com.example.interfaz.service.LogService;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -11,15 +12,17 @@ import java.io.IOException;
 public class Main extends Application {
 
     private static final String MAIN_VIEW_FXML = "/main-view.fxml";
-    private static final String APP_TITLE = "YouTube Downloader";
-    private static final int WINDOW_WIDTH = 800;
-    private static final int WINDOW_HEIGHT = 600;
+    private static final String APP_TITLE = "Playlist Downloader";
+    private static final int WINDOW_WIDTH = 920;
+    private static final int WINDOW_HEIGHT = 650;
 
     @Override
     public void start(Stage stage) throws IOException {
         try {
+            Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+
             LogService.getInstance();
-            LogService.log("Aplicación YouTube Downloader iniciada");
+            LogService.log("Aplicación Playlist Downloader iniciada con tema AtlantaFX Primer Dark");
 
             FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource(MAIN_VIEW_FXML));
             Scene scene = new Scene(fxmlLoader.load(), WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -50,7 +53,7 @@ public class Main extends Application {
 
         } catch (IOException e) {
             System.err.println("Error al cargar la interfaz: " + e.getMessage());
-            e.printStackTrace();
+            LogService.log("Error crítico al cargar interfaz: " + e.getMessage());
             throw e;
         }
     }
