@@ -12,10 +12,13 @@ import com.example.interfaz.factory.ServiceFactory;
 import com.example.interfaz.service.DownloadService;
 import com.example.interfaz.service.LogService;
 import com.example.interfaz.service.YouTubeDownloadService;
+import com.example.interfaz.service.config.MusicFolderService;
+import com.example.interfaz.service.download.DownloadProgressParser;
 import com.example.interfaz.util.FileUtils;
 
 import atlantafx.base.theme.PrimerDark;
 import atlantafx.base.theme.PrimerLight;
+import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -308,6 +311,9 @@ public class MainController {
         LOGGER.info("Descarga cancelada por el usuario");
     }
 
+    private final DownloadProgressParser progressParser = new DownloadProgressParser();
+    private final MusicFolderService musicFolderService = new MusicFolderService();
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -317,54 +323,42 @@ public class MainController {
     }
 
     public void handleProgressUpdate(String message) {
-        if (message.startsWith("PLAYLIST_PROGRESS:")) {
-            String progressInfo = message.substring("PLAYLIST_PROGRESS:".length());
-            String[] parts = progressInfo.split("/");
-            if (parts.length == 2) {
-                try {
-                    int currentItem = Integer.parseInt(parts[0]);
-                    int totalItems = Integer.parseInt(parts[1]);
-                    progressController.updateOverallProgress(currentItem, totalItems);
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Error parseando progreso de playlist: {}", message);
-                }
+        progressParser.parseAndDispatch(message, new DownloadProgressParser.ProgressListener() {
+            @Override
+            public void onOverallProgress(int current, int total) {
+                progressController.updateOverallProgress(current, total);
             }
-        } else if (message.startsWith("SONG_START:")) {
-            String songInfo = message.substring("SONG_START:".length());
-            progressController.updateCurrentSong(songInfo);
-        } else if (message.startsWith("PROGRESS:")) {
-            String percentageStr = message.substring("PROGRESS:".length());
-            try {
-                double percentage = Double.parseDouble(percentageStr);
-                double progress = percentage / 100.0;
-                progressController.updateCurrentProgress(progress, String.format("Descargando... %.1f%%", percentage));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Error parseando porcentaje: {}", message);
+
+            @Override
+            public void onSongStart(String songTitle) {
+                progressController.updateCurrentSong(songTitle);
             }
-        } else if (message.startsWith("SPEED:")) {
-            String speed = message.substring("SPEED:".length());
-            progressController.updateDownloadSpeed(speed);
-        } else if (message.startsWith("ETA:")) {
-            String eta = message.substring("ETA:".length());
-            progressController.updateETA(eta);
-        } else if (message.startsWith("DOWNLOADING:")) {
-            String videoTitle = message.substring("DOWNLOADING:".length());
-            progressController.updateCurrentSong(videoTitle);
-            progressController.updateStatus("🎵 Descargando...");
-        } else if (message.startsWith("COMPLETED:") || message.startsWith("PROCESSED:")) {
-            String completedTitle = message.substring(message.indexOf(":") + 1);
-            progressController.updateStatus("✅ Completado: " + completedTitle);
-        } else if (!message.startsWith("DOWNLOAD_START:") && 
-                   !message.contains("[youtube:tab]") && 
-                   !message.contains("[youtube]") &&
-                   !message.contains("[download]") &&
-                   !message.startsWith("Iniciando descarga") &&
-                   !message.contains("Downloading item") &&
-                   !message.contains("API JSON") &&
-                   !message.contains("player API") &&
-                   !message.contains("ios player")) {
-            progressController.handleProgressUpdate(message);
-        }
+
+            @Override
+            public void onCurrentProgress(double progress, String statusText) {
+                progressController.updateCurrentProgress(progress, statusText);
+            }
+
+            @Override
+            public void onSpeedUpdate(String speed) {
+                progressController.updateDownloadSpeed(speed);
+            }
+
+            @Override
+            public void onEtaUpdate(String eta) {
+                progressController.updateETA(eta);
+            }
+
+            @Override
+            public void onStatusUpdate(String statusMessage) {
+                progressController.updateStatus(statusMessage);
+            }
+
+            @Override
+            public void onGenericMessage(String message) {
+                progressController.handleProgressUpdate(message);
+            }
+        });
     }
 
     public void updateCurrentProgress(double progress, String details) {
@@ -415,6 +409,7 @@ public class MainController {
     public static boolean isDownloadingStatic() {
         return instance != null && instance.uiStateManager.isDownloading();
     }
+
     public QueueController getQueueController() {
         return queueController;
     }
@@ -472,47 +467,29 @@ public class MainController {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Seleccionar Carpeta de Música");
 
-        File currentDir = new File(FileUtils.getMusicDirectory());
+        File currentDir = new File(musicFolderService.getCurrentMusicFolder());
         if (currentDir.exists()) {
             directoryChooser.setInitialDirectory(currentDir);
         }
 
         File selectedDirectory = directoryChooser.showDialog(primaryStage);
         if (selectedDirectory != null) {
-            String newPath = selectedDirectory.getAbsolutePath();
-            FileUtils.setMusicDirectory(newPath);
-            ConfigurationManager.getInstance().setMusicDirectory(newPath);
-            ConfigurationManager.getInstance().saveConfiguration();
-
+            String newPath = musicFolderService.setMusicFolder(selectedDirectory.getAbsolutePath());
             updateMusicFolderLabel();
-
             showAlert("Carpeta Actualizada", "La carpeta de música se ha cambiado a: " + newPath);
-            LOGGER.info("Carpeta de música cambiada a: {}", newPath);
         }
     }
 
     @FXML
     private void onResetMusicFolder() {
-        String defaultPath = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "MUSICA";
-        FileUtils.setMusicDirectory(defaultPath);
-        ConfigurationManager.getInstance().setMusicDirectory(defaultPath);
-        ConfigurationManager.getInstance().saveConfiguration();
-
+        String defaultPath = musicFolderService.resetToDefaultMusicFolder();
         updateMusicFolderLabel();
-
         showAlert("Carpeta Restablecida", "La carpeta de música se ha restablecido a: " + defaultPath);
-        LOGGER.info("Carpeta de música restablecida a: {}", defaultPath);
     }
 
     private void updateMusicFolderLabel() {
         if (musicFolderLabel != null) {
-            String currentPath = FileUtils.getMusicDirectory();
-
-            File currentDir = new File(currentPath);
-            String displayPath = currentDir.getParent() != null ? 
-                new File(currentDir.getParent()).getName() + "/" + currentDir.getName() : 
-                currentDir.getName();
-            musicFolderLabel.setText(displayPath);
+            musicFolderLabel.setText(musicFolderService.getDisplayPath());
         }
     }
 
@@ -548,13 +525,13 @@ public class MainController {
     private void onToggleTheme() {
         isDarkMode = !isDarkMode;
         if (isDarkMode) {
-            javafx.application.Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+            Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
             if (themeIcon != null) {
                 themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
             }
             LOGGER.info("Cambiado a Modo Oscuro (Primer Dark)");
         } else {
-            javafx.application.Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+            Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
             if (themeIcon != null) {
                 themeIcon.setIconLiteral("mdi2w-weather-sunny");
             }
