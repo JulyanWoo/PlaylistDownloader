@@ -1,7 +1,8 @@
 package com.example.interfaz.service;
 
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -15,10 +16,6 @@ import com.example.interfaz.service.filter.DuplicateFinder;
 import com.example.interfaz.service.filter.SimilarityCalculator;
 import com.example.interfaz.service.filter.TitleNormalizer;
 
-/**
- * Provides in-session duplicate filtering and URL validation.
- * No persistent file history (canciones.txt) is used.
- */
 public class SongFilterService implements FilterService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SongFilterService.class);
@@ -31,7 +28,9 @@ public class SongFilterService implements FilterService {
         LOGGER.info("SongFilterService initialized (no persistent song history)");
     }
 
-    /** Checks for duplicate among a given set of known titles (session-only). */
+    /**
+     * Checks for duplicate among a given set of known titles (session-only).
+     */
     public boolean isDuplicateSong(String songTitle, Set<String> knownTitles) {
         if (songTitle == null || songTitle.trim().isEmpty() || knownTitles == null) {
             return false;
@@ -40,7 +39,9 @@ public class SongFilterService implements FilterService {
     }
 
     public double calculateSimilarity(String title1, String title2) {
-        if (title1 == null || title2 == null) return 0.0;
+        if (title1 == null || title2 == null) {
+            return 0.0;
+        }
         String n1 = TitleNormalizer.normalize(title1);
         String n2 = TitleNormalizer.normalize(title2);
         return SimilarityCalculator.calculateLevenshteinSimilarity(n1, n2);
@@ -52,7 +53,9 @@ public class SongFilterService implements FilterService {
 
     @Override
     public List<Song> filterDuplicates(List<Song> songs) {
-        if (songs == null || songs.isEmpty()) return new ArrayList<>();
+        if (songs == null || songs.isEmpty()) {
+            return new ArrayList<>();
+        }
 
         List<Song> result = new ArrayList<>();
         Set<String> seenTitles = new HashSet<>();
@@ -74,7 +77,9 @@ public class SongFilterService implements FilterService {
         List<Song> processed = new ArrayList<>();
 
         for (Song song : songs) {
-            if (processed.contains(song)) continue;
+            if (processed.contains(song)) {
+                continue;
+            }
             List<Song> group = new ArrayList<>();
             group.add(song);
             processed.add(song);
@@ -86,18 +91,23 @@ public class SongFilterService implements FilterService {
                     processed.add(other);
                 }
             }
-            if (group.size() > 1) groups.add(group);
+            if (group.size() > 1) {
+                groups.add(group);
+            }
         }
         return groups;
     }
 
     @Override
     public boolean isValidUrl(String url) {
-        if (url == null || url.trim().isEmpty()) return false;
+        if (url == null || url.trim().isEmpty()) {
+            return false;
+        }
         try {
-            new URL(url.trim());
+            URI uri = new URI(url.trim());
+            uri.toURL();
             return url.contains("youtube.com") || url.contains("youtu.be");
-        } catch (MalformedURLException e) {
+        } catch (URISyntaxException | MalformedURLException e) {
             return false;
         }
     }
