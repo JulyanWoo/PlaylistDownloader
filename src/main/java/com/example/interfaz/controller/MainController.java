@@ -292,13 +292,18 @@ public class MainController {
                         }
                         loadYtDlpVersion();
                         if (success) {
-                            dialogService.showInfo("Actualización yt-dlp", "yt-dlp se ha actualizado correctamente a la última versión.");
+                            dialogService.showConfirmation(
+                                "Actualización completada",
+                                "yt-dlp se ha actualizado correctamente.",
+                                "¿Deseas reiniciar la aplicación ahora para asegurar el uso del nuevo ejecutable?",
+                                Platform::exit
+                            );
                         } else {
                             dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
                         }
                     }));
         } else {
-            ytDlpUpdateService.checkUpdateAsync().thenAccept(info -> Platform.runLater(() -> {
+            ytDlpUpdateService.checkUpdateAsync(true).thenAccept(info -> Platform.runLater(() -> {
                 this.lastUpdateInfo = info;
                 if (updateYtDlpButton != null) {
                     updateYtDlpButton.setDisable(false);
