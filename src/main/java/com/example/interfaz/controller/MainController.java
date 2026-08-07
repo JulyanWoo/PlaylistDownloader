@@ -43,6 +43,9 @@ public class MainController {
     @FXML
     VBox logsSection;
 
+    @FXML
+    VBox libraryAnalyzerView;
+
     // Header and sidebar components
     @FXML
     FontIcon themeIcon;
@@ -53,9 +56,15 @@ public class MainController {
     @FXML
     Button btnNavLogs;
     @FXML
+    Button btnNavAnalyzer;
+    @FXML
     TextField inputField;
     @FXML
     Label musicFolderLabel;
+    @FXML
+    Label ytDlpVersionLabel;
+    @FXML
+    Button updateYtDlpButton;
 
     // Services injected from ServiceFactory
     private NavigationService navigationService;
@@ -64,6 +73,7 @@ public class MainController {
     private WindowManager windowManager;
     private FolderChooserService folderChooserService;
     private DownloadProgressParser progressParser;
+    private com.example.interfaz.service.download.YtDlpUpdateService ytDlpUpdateService;
 
     private DownloadCoordinator downloadCoordinator;
     private DownloadService downloadService;
@@ -98,9 +108,17 @@ public class MainController {
             if (musicFolderLabel != null) {
                 musicFolderLabel.setText(folderChooserService.getDisplayPath());
             }
+            loadYtDlpVersion();
             LOGGER.info("MainController ultra-delgado e impulsado por eventos inicializado correctamente");
         } catch (Exception e) {
             LOGGER.error("Error inicializando MainController", e);
+        }
+    }
+
+    private void loadYtDlpVersion() {
+        if (ytDlpVersionLabel != null && ytDlpUpdateService != null) {
+            java.util.concurrent.CompletableFuture.supplyAsync(() -> ytDlpUpdateService.getCurrentVersion())
+                    .thenAccept(ver -> Platform.runLater(() -> ytDlpVersionLabel.setText("Ver: " + ver)));
         }
     }
 
@@ -112,6 +130,7 @@ public class MainController {
         this.windowManager = serviceFactory.getWindowManager();
         this.folderChooserService = serviceFactory.getFolderChooserService();
         this.progressParser = serviceFactory.getDownloadProgressParser();
+        this.ytDlpUpdateService = serviceFactory.getYtDlpUpdateService();
     }
 
     private void initializeCoordinator(ServiceFactory serviceFactory) {
@@ -174,7 +193,12 @@ public class MainController {
 
     @FXML
     void onNavLogs() {
-        navigationService.navigateTo(btnNavLogs, logsSection, queueView, progressView);
+        navigationService.navigateTo(btnNavLogs, logsSection, queueView, progressView, libraryAnalyzerView);
+    }
+
+    @FXML
+    void onNavAnalyzer() {
+        navigationService.navigateTo(btnNavAnalyzer, libraryAnalyzerView, queueView, progressView, logsSection);
     }
 
     @FXML
@@ -220,6 +244,29 @@ public class MainController {
         if (musicFolderLabel != null) {
             musicFolderLabel.setText(newPath);
         }
+    }
+
+    @FXML
+    void onUpdateYtDlp() {
+        if (updateYtDlpButton != null) {
+            updateYtDlpButton.setDisable(true);
+        }
+        if (ytDlpVersionLabel != null) {
+            ytDlpVersionLabel.setText("Actualizando...");
+        }
+
+        ytDlpUpdateService.updateYtDlpAsync(logLine -> LOGGER.info("[yt-dlp update UI] {}", logLine))
+                .thenAccept(success -> Platform.runLater(() -> {
+                    if (updateYtDlpButton != null) {
+                        updateYtDlpButton.setDisable(false);
+                    }
+                    loadYtDlpVersion();
+                    if (success) {
+                        dialogService.showInfo("Actualización yt-dlp", "yt-dlp se ha actualizado correctamente a la última versión.");
+                    } else {
+                        dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
+                    }
+                }));
     }
 
     public QueueController getQueueController() {

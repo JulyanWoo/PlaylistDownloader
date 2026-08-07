@@ -46,6 +46,11 @@
                         <FontIcon iconLiteral="mdi2c-console" iconSize="18" />
                      </graphic>
                   </Button>
+                  <Button fx:id="btnNavAnalyzer" mnemonicParsing="false" onAction="#onNavAnalyzer" text=" Analizador" styleClass="sidebar-btn">
+                     <graphic>
+                        <FontIcon iconLiteral="mdi2f-folder-search-outline" iconSize="18" />
+                     </graphic>
+                  </Button>
                </children>
             </VBox>
 
@@ -75,6 +80,24 @@
                         </Button>
                      </children>
                   </HBox>
+               </children>
+            </VBox>
+
+            <!-- Tarjeta de yt-dlp Engine en Sidebar -->
+            <VBox styleClass="sidebar-config-card">
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="6">
+                     <children>
+                        <FontIcon iconLiteral="mdi2c-cloud-download" iconSize="16" />
+                        <Label text="yt-dlp Engine" styleClass="card-title" />
+                     </children>
+                  </HBox>
+                  <Label fx:id="ytDlpVersionLabel" text="Ver: Cargando..." styleClass="folder-path-text" wrapText="true" />
+                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" text="Actualizar yt-dlp" styleClass="button, sm">
+                     <graphic>
+                        <FontIcon iconLiteral="mdi2u-update" iconSize="14" />
+                     </graphic>
+                  </Button>
                </children>
             </VBox>
 
@@ -140,6 +163,9 @@
 
                   <!-- Sub-vista 3: Logs / Consola -->
                   <fx:include fx:id="logsSection" source="logs-view.fxml" visible="false" managed="false" />
+
+                  <!-- Sub-vista 4: Analizador de Biblioteca -->
+                  <fx:include fx:id="libraryAnalyzerView" source="library-analyzer-view.fxml" visible="false" managed="false" />
                </children>
             </StackPane>
 

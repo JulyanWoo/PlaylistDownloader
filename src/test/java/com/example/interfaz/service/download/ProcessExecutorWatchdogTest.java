@@ -21,28 +21,29 @@ class ProcessExecutorWatchdogTest {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void shouldStopProcessThatProducesNoOutput() throws Exception {
-        ProcessExecutor executor = new ProcessExecutor();
-        List<String> cmd = System.getProperty("os.name").toLowerCase().contains("win")
-                ? List.of("cmd.exe", "/c", "ping -n 6 127.0.0.1 > nul")   // ~5 s wait
-                : List.of("sleep", "5");
+        try (ProcessExecutor executor = new ProcessExecutor()) {
+            List<String> cmd = System.getProperty("os.name").toLowerCase().contains("win")
+                    ? List.of("cmd.exe", "/c", "ping -n 6 127.0.0.1 > nul")   // ~5 s wait
+                    : List.of("sleep", "5");
 
-        // Run the long-running command in a background thread
-        var future = java.util.concurrent.Executors
-                .newSingleThreadExecutor()
-                .submit(() -> {
-                    try {
-                        return executor.execute(cmd, null, null);
-                    } catch (Exception e) {
-                        return false;
-                    }
-                });
+            // Run the long-running command in a background thread
+            var future = java.util.concurrent.Executors
+                    .newSingleThreadExecutor()
+                    .submit(() -> {
+                        try {
+                            return executor.execute(cmd, null, null);
+                        } catch (java.io.IOException | InterruptedException e) {
+                            return false;
+                        }
+                    });
 
-        Thread.sleep(300); // give process time to start
-        executor.stop();   // cancel immediately
+            Thread.sleep(300); // give process time to start
+            executor.stop();   // cancel immediately
 
-        Boolean result = future.get(5, TimeUnit.SECONDS);
-        assertFalse(result, "Cancelled process should return false");
-        assertFalse(executor.isAlive(), "Process should be cleaned up after stop()");
+            Boolean result = future.get(5, TimeUnit.SECONDS);
+            assertFalse(result, "Cancelled process should return false");
+            assertFalse(executor.isAlive(), "Process should be cleaned up after stop()");
+        }
     }
 
     @Test

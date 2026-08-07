@@ -8,6 +8,10 @@ import com.example.interfaz.service.DownloadService;
 import com.example.interfaz.service.FilterService;
 import com.example.interfaz.service.SongFilterService;
 import com.example.interfaz.service.YouTubeDownloadService;
+import com.example.interfaz.service.analyzer.DuplicateDetectionService;
+import com.example.interfaz.service.analyzer.LibraryAnalyzerService;
+import com.example.interfaz.service.analyzer.SongMetadataReader;
+import com.example.interfaz.service.analyzer.SongNameNormalizer;
 import com.example.interfaz.service.config.MusicFolderService;
 import com.example.interfaz.service.download.DownloadCoordinator;
 import com.example.interfaz.service.download.DownloadProgressParser;
@@ -35,6 +39,12 @@ public class ServiceFactory {
     private FolderChooserService folderChooserService;
     private MusicFolderService musicFolderService;
     private DownloadProgressParser downloadProgressParser;
+
+    private SongNameNormalizer songNameNormalizer;
+    private SongMetadataReader songMetadataReader;
+    private DuplicateDetectionService duplicateDetectionService;
+    private LibraryAnalyzerService libraryAnalyzerService;
+    private com.example.interfaz.service.download.YtDlpUpdateService ytDlpUpdateService;
 
     public ServiceFactory() {
     }
@@ -145,7 +155,58 @@ public class ServiceFactory {
         this.downloadCoordinator = coordinator;
     }
 
+    public SongNameNormalizer getSongNameNormalizer() {
+        if (songNameNormalizer == null) {
+            songNameNormalizer = new SongNameNormalizer();
+        }
+        return songNameNormalizer;
+    }
+
+    public SongMetadataReader getSongMetadataReader() {
+        if (songMetadataReader == null) {
+            songMetadataReader = new SongMetadataReader(getSongNameNormalizer());
+        }
+        return songMetadataReader;
+    }
+
+    public DuplicateDetectionService getDuplicateDetectionService() {
+        if (duplicateDetectionService == null) {
+            duplicateDetectionService = new DuplicateDetectionService();
+        }
+        return duplicateDetectionService;
+    }
+
+    public com.example.interfaz.service.download.YtDlpUpdateService getYtDlpUpdateService() {
+        if (ytDlpUpdateService == null) {
+            ytDlpUpdateService = new com.example.interfaz.service.download.YtDlpUpdateService();
+        }
+        return ytDlpUpdateService;
+    }
+
+    public LibraryAnalyzerService getLibraryAnalyzerService() {
+        if (libraryAnalyzerService == null) {
+            libraryAnalyzerService = new LibraryAnalyzerService(
+                    getMusicFolderService(),
+                    getSongMetadataReader(),
+                    getDuplicateDetectionService(),
+                    getEventPublisher()
+            );
+        }
+        return libraryAnalyzerService;
+    }
+
     public synchronized void shutdown() {
+        if (libraryAnalyzerService != null) {
+            try {
+                libraryAnalyzerService.close();
+                LOGGER.info("LibraryAnalyzerService liberado correctamente en ServiceFactory.shutdown()");
+            } catch (Exception e) {
+                LOGGER.error("Error al cerrar LibraryAnalyzerService en shutdown", e);
+            } finally {
+                libraryAnalyzerService = null;
+            }
+        }
+
         if (downloadCoordinator != null) {
             try {
                 downloadCoordinator.close();
@@ -177,6 +238,11 @@ public class ServiceFactory {
         folderChooserService = null;
         musicFolderService = null;
         downloadProgressParser = null;
+        songNameNormalizer = null;
+        songMetadataReader = null;
+        duplicateDetectionService = null;
+        libraryAnalyzerService = null;
+        ytDlpUpdateService = null;
     }
 
     public static synchronized void reset() {

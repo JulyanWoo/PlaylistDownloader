@@ -65,8 +65,8 @@ class EventBusTest {
     void shouldValidateNullParameters() {
         EventBus bus = new EventBus();
 
-        assertThrows(NullPointerException.class, () -> bus.subscribe(null, e -> {}));
-        assertThrows(NullPointerException.class, () -> bus.subscribe(DownloadEvent.class, null));
-        assertThrows(NullPointerException.class, () -> bus.publish(null));
+        assertNotNull(assertThrows(NullPointerException.class, () -> bus.subscribe(null, e -> {})));
+        assertNotNull(assertThrows(NullPointerException.class, () -> bus.subscribe(DownloadEvent.class, null)));
+        assertNotNull(assertThrows(NullPointerException.class, () -> bus.publish(null)));
     }
 }
