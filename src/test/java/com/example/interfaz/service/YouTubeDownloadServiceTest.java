@@ -7,21 +7,21 @@ class YouTubeDownloadServiceTest {
 
     @Test
     void testCanHandleValidYouTubeUrls() {
-        YouTubeDownloadService service = new YouTubeDownloadService();
-
-        assertTrue(service.canHandle("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
-        assertTrue(service.canHandle("https://youtu.be/dQw4w9WgXcQ"));
-        assertTrue(service.canHandle("http://music.youtube.com/playlist?list=123"));
+        try (YouTubeDownloadService service = new YouTubeDownloadService()) {
+            assertTrue(service.canHandle("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+            assertTrue(service.canHandle("https://youtu.be/dQw4w9WgXcQ"));
+            assertTrue(service.canHandle("http://music.youtube.com/playlist?list=123"));
+        }
     }
 
     @Test
     void testCanHandleInvalidUrls() {
-        YouTubeDownloadService service = new YouTubeDownloadService();
-
-        assertFalse(service.canHandle("https://fakeyoutube.com/watch?v=123"));
-        assertFalse(service.canHandle("texto-youtube.com"));
-        assertFalse(service.canHandle(null));
-        assertFalse(service.canHandle(""));
+        try (YouTubeDownloadService service = new YouTubeDownloadService()) {
+            assertFalse(service.canHandle("https://fakeyoutube.com/watch?v=123"));
+            assertFalse(service.canHandle("texto-youtube.com"));
+            assertFalse(service.canHandle(null));
+            assertFalse(service.canHandle(""));
+        }
     }
 
     @Test
@@ -29,7 +29,7 @@ class YouTubeDownloadServiceTest {
         YouTubeDownloadService service = new YouTubeDownloadService();
         service.close();
 
-        assertThrows(IllegalStateException.class, () -> service.downloadSong("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
-        assertThrows(IllegalStateException.class, () -> service.downloadPlaylist("https://www.youtube.com/playlist?list=123", "", true));
+        assertNotNull(assertThrows(IllegalStateException.class, () -> service.downloadSong("https://www.youtube.com/watch?v=dQw4w9WgXcQ")));
+        assertNotNull(assertThrows(IllegalStateException.class, () -> service.downloadPlaylist("https://www.youtube.com/playlist?list=123", "", true)));
     }
 }

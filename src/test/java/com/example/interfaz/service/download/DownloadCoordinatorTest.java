@@ -101,11 +101,12 @@ class DownloadCoordinatorTest {
         QueueManager queueManager = new QueueManager();
         DownloadService downloadService = new YouTubeDownloadService();
 
-        DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus);
-        int initialStartedListeners = eventBus.getListenerCount(DownloadEvent.DownloadStarted.class);
-        assertTrue(initialStartedListeners > 0);
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus)) {
+            assertNotNull(coordinator);
+            int initialStartedListeners = eventBus.getListenerCount(DownloadEvent.DownloadStarted.class);
+            assertTrue(initialStartedListeners > 0);
+        }
 
-        coordinator.close();
         assertEquals(0, eventBus.getListenerCount(DownloadEvent.DownloadStarted.class), "listeners deben desuscribirse al cerrar coordinator");
     }
 
@@ -152,14 +153,15 @@ class DownloadCoordinatorTest {
         QueueManager queueManager = new QueueManager();
         DownloadService downloadService = new YouTubeDownloadService();
 
-        DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus);
-        coordinator.addToQueue("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-        coordinator.startDownload();
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus)) {
+            coordinator.addToQueue("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+            coordinator.startDownload();
 
-        coordinator.close();
+            coordinator.shutdown();
 
-        assertFalse(coordinator.isDownloading(), "isDownloading() debe retornar false tras shutdown()");
-        assertEquals(0, eventBus.getListenerCount(DownloadEvent.DownloadStarted.class));
+            assertFalse(coordinator.isDownloading(), "isDownloading() debe retornar false tras shutdown()");
+            assertEquals(0, eventBus.getListenerCount(DownloadEvent.DownloadStarted.class));
+        }
     }
 
     @Test
@@ -168,16 +170,16 @@ class DownloadCoordinatorTest {
         QueueManager queueManager = new QueueManager();
         DownloadService downloadService = new YouTubeDownloadService();
 
-        DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus);
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus)) {
+            assertDoesNotThrow(() -> {
+                coordinator.cancelDownload();
+                coordinator.cancelDownload();
+                coordinator.shutdown();
+                coordinator.shutdown();
+            });
 
-        assertDoesNotThrow(() -> {
-            coordinator.cancelDownload();
-            coordinator.cancelDownload();
-            coordinator.shutdown();
-            coordinator.shutdown();
-        });
-
-        assertThrows(IllegalStateException.class, () -> coordinator.startDownload());
-        assertThrows(IllegalStateException.class, () -> coordinator.addToQueue("https://youtube.com/watch?v=1"));
+            assertNotNull(assertThrows(IllegalStateException.class, coordinator::startDownload));
+            assertNotNull(assertThrows(IllegalStateException.class, () -> coordinator.addToQueue("https://youtube.com/watch?v=1")));
+        }
     }
 }

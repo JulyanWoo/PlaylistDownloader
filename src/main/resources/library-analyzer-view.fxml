@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox spacing="16.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.interfaz.controller.LibraryAnalyzerController">
+
+    <!-- Card 1: Controles de Análisis y Progreso -->
+    <VBox styleClass="card-panel" spacing="12">
+        <children>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <children>
+                    <FontIcon iconLiteral="mdi2f-folder-search-outline" iconSize="22" />
+                    <VBox spacing="2">
+                        <children>
+                            <Label text="Analizador de Biblioteca Musical" styleClass="card-title" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+                            <Label text="Detecta y gestiona automáticamente archivos de música duplicados usando comparación por metadatos y hash SHA-256." styleClass="card-subtitle" style="-fx-text-fill: -color-fg-muted;" />
+                        </children>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="btnStartAnalysis" mnemonicParsing="false" onAction="#onStartAnalysis" text="Analizar biblioteca" styleClass="button, accent">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2p-play" iconSize="16" />
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnCancelAnalysis" mnemonicParsing="false" onAction="#onCancelAnalysis" text="Cancelar" disable="true" styleClass="button, danger">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-close" iconSize="16" />
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+
+            <!-- Sección de Progreso -->
+            <VBox fx:id="progressBox" spacing="8" visible="false" managed="false" style="-fx-padding: 10 0 0 0;">
+                <children>
+                    <ProgressBar fx:id="progressBar" progress="0.0" maxWidth="1.7976931348623157E308" prefHeight="10" />
+                    <HBox spacing="20" alignment="CENTER_LEFT">
+                        <children>
+                            <Label fx:id="statusLabel" text="Preparando análisis..." styleClass="folder-path-text" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Label fx:id="duplicatesFoundLabel" text="Duplicados: 0" style="-fx-font-weight: bold; -fx-text-fill: -color-warning-fg;" />
+                            <Label fx:id="timeRemainingLabel" text="Tiempo restante: --:--" styleClass="folder-path-text" />
+                        </children>
+                    </HBox>
+                </children>
+            </VBox>
+
+            <!-- Panel Estadístico Final -->
+            <HBox fx:id="statsBox" spacing="15" visible="false" managed="false" style="-fx-padding: 10; -fx-background-color: -color-bg-subtle; -fx-background-radius: 6;">
+                <children>
+                    <VBox spacing="2">
+                        <Label text="Canciones procesadas" styleClass="sidebar-section-title" />
+                        <Label fx:id="lblStatTotalSongs" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                    </VBox>
+                    <Separator orientation="VERTICAL" />
+                    <VBox spacing="2">
+                        <Label text="Archivos analizados" styleClass="sidebar-section-title" />
+                        <Label fx:id="lblStatTotalFiles" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                    </VBox>
+                    <Separator orientation="VERTICAL" />
+                    <VBox spacing="2">
+                        <Label text="Grupos duplicados" styleClass="sidebar-section-title" />
+                        <Label fx:id="lblStatGroups" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                    </VBox>
+                    <Separator orientation="VERTICAL" />
+                    <VBox spacing="2">
+                        <Label text="Espacio recuperable" styleClass="sidebar-section-title" />
+                        <Label fx:id="lblStatRecoverableSpace" text="0 MB" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -color-success-fg;" />
+                    </VBox>
+                    <Separator orientation="VERTICAL" />
+                    <VBox spacing="2">
+                        <Label text="Tiempo transcurrido" styleClass="sidebar-section-title" />
+                        <Label fx:id="lblStatDuration" text="00:00" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                    </VBox>
+                </children>
+            </HBox>
+        </children>
+    </VBox>
+
+    <!-- Card 2: Resultados TreeTableView -->
+    <VBox styleClass="card-panel" VBox.vgrow="ALWAYS" spacing="10">
+        <children>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <children>
+                    <Label text="Grupos de Canciones Duplicadas" styleClass="card-title" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="btnKeepOriginal" mnemonicParsing="false" onAction="#onKeepOriginal" text="Conservar original" styleClass="button, sm">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-check" iconSize="14" />
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnSelectDuplicates" mnemonicParsing="false" onAction="#onSelectDuplicates" text="Seleccionar copias" styleClass="button, sm">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-checkbox-marked" iconSize="14" />
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnUnselectAll" mnemonicParsing="false" onAction="#onUnselectAll" text="Desmarcar todo" styleClass="button, sm">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-checkbox-blank-outline" iconSize="14" />
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+
+            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false">
+                <columns>
+                    <TreeTableColumn fx:id="colSelect" prefWidth="50" resizable="false" text="☑" />
+                    <TreeTableColumn fx:id="colName" prefWidth="240" text="Nombre / Grupo" />
+                    <TreeTableColumn fx:id="colArtist" prefWidth="140" text="Artista" />
+                    <TreeTableColumn fx:id="colDuration" prefWidth="80" text="Duración" />
+                    <TreeTableColumn fx:id="colSize" prefWidth="90" text="Tamaño" />
+                    <TreeTableColumn fx:id="colType" prefWidth="70" text="Tipo" />
+                    <TreeTableColumn fx:id="colStatus" prefWidth="130" text="Estado" />
+                    <TreeTableColumn fx:id="colPath" prefWidth="250" text="Ruta" />
+                </columns>
+                <columnResizePolicy>
+                    <TreeTableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+            </TreeTableView>
+
+            <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 5 0 0 0;">
+                <children>
+                    <Label fx:id="selectedSummaryLabel" text="0 duplicados seleccionados para mover" styleClass="folder-path-text" />
+                    <Button fx:id="btnMoveToTrash" mnemonicParsing="false" onAction="#onMoveToTrash" text="Mover duplicados a cuarentena" styleClass="button, danger">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2d-delete-sweep" iconSize="16" />
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+        </children>
+    </VBox>
+</VBox>

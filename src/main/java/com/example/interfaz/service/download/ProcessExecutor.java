@@ -52,10 +52,9 @@ public class ProcessExecutor implements AutoCloseable {
         }
 
         synchronized (this) {
-            if (shouldStop.get()) {
-                notifySafely(logNotifier, "Download cancelled by user");
-                return false;
-            }
+            // Always reset flags — a new execute() call means a new download.
+            // The old stop() may have set shouldStop=true and then nulled currentProcess,
+            // preventing resetState() from clearing it (race condition).
             this.shouldStop.set(false);
             this.isPaused.set(false);
         }
@@ -230,9 +229,10 @@ public class ProcessExecutor implements AutoCloseable {
     private synchronized void resetState(Process process) {
         if (process != null && this.currentProcess == process) {
             this.currentProcess = null;
-            this.isPaused.set(false);
-            this.shouldStop.set(false);
         }
+        // Always clear flags — even if stop() already nulled currentProcess
+        this.isPaused.set(false);
+        this.shouldStop.set(false);
     }
 
     synchronized void clearState() {
