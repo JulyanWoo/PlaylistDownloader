@@ -46,6 +46,7 @@ public class ReleaseChecker {
                 String body = response.body();
                 String latestVersion = extractTagName(body);
                 String downloadUrl = extractAssetDownloadUrl(body);
+                String sha256SumsUrl = extractSha256SumsUrl(body);
 
                 if (downloadUrl.isEmpty()) {
                     downloadUrl = DEFAULT_EXE_DOWNLOAD_URL;
@@ -55,7 +56,7 @@ public class ReleaseChecker {
                 LOGGER.info("Versión instalada: {}, Última versión en GitHub: {}, Actualización disponible: {}",
                         currentVersion, latestVersion, available);
 
-                return new UpdateInfo(currentVersion, latestVersion, available, downloadUrl);
+                return new UpdateInfo(currentVersion, latestVersion, available, downloadUrl, sha256SumsUrl);
             } else {
                 LOGGER.warn("Respuesta inesperada al consultar lanzamientos de GitHub: HTTP {}", response.statusCode());
             }
@@ -96,5 +97,14 @@ public class ReleaseChecker {
             return matcher.group(1).trim();
         }
         return DEFAULT_EXE_DOWNLOAD_URL;
+    }
+
+    private String extractSha256SumsUrl(String json) {
+        Pattern pattern = Pattern.compile("\"browser_download_url\"\\s*:\\s*\"(https://[^\"]+/SHA256SUMS)\"");
+        Matcher matcher = pattern.matcher(json);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return "";
     }
 }

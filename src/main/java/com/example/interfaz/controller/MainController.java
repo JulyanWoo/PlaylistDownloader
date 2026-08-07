@@ -159,6 +159,10 @@ public class MainController {
                 queueViewController.getQueueManager(),
                 serviceFactory.getEventPublisher());
         serviceFactory.registerDownloadCoordinator(downloadCoordinator);
+
+        if (ytDlpUpdateService != null) {
+            ytDlpUpdateService.setActiveDownloadChecker(downloadCoordinator::isDownloading);
+        }
     }
 
     private void setupEventSubscriptions(ServiceFactory serviceFactory) {
@@ -268,6 +272,11 @@ public class MainController {
 
     @FXML
     void onUpdateYtDlp() {
+        if (downloadCoordinator != null && downloadCoordinator.isDownloading()) {
+            dialogService.showWarning("Descarga en curso", "No se puede actualizar yt-dlp mientras existen descargas activas en curso.");
+            return;
+        }
+
         if (updateYtDlpButton != null) {
             updateYtDlpButton.setDisable(true);
         }
