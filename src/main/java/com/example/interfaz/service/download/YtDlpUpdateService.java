@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import com.example.interfaz.service.update.BinaryUpdater;
 import com.example.interfaz.service.update.ReleaseChecker;
+import com.example.interfaz.service.update.UpdateCache;
+import com.example.interfaz.service.update.UpdateHistory;
 import com.example.interfaz.service.update.UpdateInfo;
 
 public class YtDlpUpdateService {
@@ -21,16 +23,24 @@ public class YtDlpUpdateService {
     private final BinaryResolver binaryResolver;
     private final ReleaseChecker releaseChecker;
     private final BinaryUpdater binaryUpdater;
+    private final UpdateCache updateCache;
+    private final UpdateHistory updateHistory;
     private Supplier<Boolean> activeDownloadChecker;
 
-    public YtDlpUpdateService(BinaryResolver binaryResolver, ReleaseChecker releaseChecker, BinaryUpdater binaryUpdater) {
+    public YtDlpUpdateService(BinaryResolver binaryResolver, ReleaseChecker releaseChecker, BinaryUpdater binaryUpdater, UpdateCache updateCache, UpdateHistory updateHistory) {
         this.binaryResolver = binaryResolver;
         this.releaseChecker = releaseChecker;
         this.binaryUpdater = binaryUpdater;
+        this.updateCache = updateCache != null ? updateCache : new UpdateCache();
+        this.updateHistory = updateHistory != null ? updateHistory : new UpdateHistory();
+    }
+
+    public YtDlpUpdateService(BinaryResolver binaryResolver, ReleaseChecker releaseChecker, BinaryUpdater binaryUpdater) {
+        this(binaryResolver, releaseChecker, binaryUpdater, new UpdateCache(), new UpdateHistory());
     }
 
     public YtDlpUpdateService() {
-        this(new BinaryResolver(), new ReleaseChecker(), new BinaryUpdater());
+        this(new BinaryResolver(), new ReleaseChecker(), new BinaryUpdater(), new UpdateCache(), new UpdateHistory());
     }
 
     public void setActiveDownloadChecker(Supplier<Boolean> activeDownloadChecker) {
@@ -60,11 +70,25 @@ public class YtDlpUpdateService {
         return "Desconocida";
     }
 
-    public CompletableFuture<UpdateInfo> checkUpdateAsync() {
+    public CompletableFuture<UpdateInfo> checkUpdateAsync(boolean forceFreshCheck) {
         return CompletableFuture.supplyAsync(() -> {
             String current = getCurrentVersion();
-            return releaseChecker.checkForUpdates(current);
+            if (!forceFreshCheck && updateCache.isCacheValidHours(24)) {
+                UpdateInfo cached = updateCache.getCachedUpdateInfo(current);
+                if (cached != null) {
+                    LOGGER.info("Usando versión de actualización en caché desde update.json");
+                    return cached;
+                }
+            }
+
+            UpdateInfo freshInfo = releaseChecker.checkForUpdates(current);
+            updateCache.saveCache(freshInfo);
+            return freshInfo;
         });
+    }
+
+    public CompletableFuture<UpdateInfo> checkUpdateAsync() {
+        return checkUpdateAsync(false);
     }
 
     public CompletableFuture<Boolean> updateYtDlpAsync(Consumer<String> logCallback) {
@@ -77,24 +101,32 @@ public class YtDlpUpdateService {
             String ytDlpPath = binaryResolver.resolveYtDlpPath();
             String current = getCurrentVersion();
             UpdateInfo info = releaseChecker.checkForUpdates(current);
+            updateCache.saveCache(info);
 
-            notify(logCallback, "Iniciando proceso de actualización para yt-dlp...");
+            notify(logCallback, "Etapa 1/4: Iniciando proceso de actualización para yt-dlp...");
             notify(logCallback, "Versión instalada: " + current);
             if (info.getLatestVersion() != null && !info.getLatestVersion().isBlank()) {
                 notify(logCallback, "Última versión detectada: " + info.getLatestVersion());
             }
 
             // Strategy 1: Safe binary updater (GitHub download -> SHA256 check -> validate -> atomic swap -> rollback)
+            notify(logCallback, "Etapa 2/4: Descargando y verificando integridad...");
             boolean success = binaryUpdater.updateBinary(ytDlpPath, info.getDownloadUrl(), info.getSha256SumsUrl(), logCallback);
 
-            if (success) {
-                notify(logCallback, "✓ Actualización mediante reemplazo directo completada.");
-                return true;
+            if (!success) {
+                // Strategy 2: Fallback to yt-dlp -U if direct binary update fails
+                notify(logCallback, "⚠️ Reemplazo directo falló, intentando respaldo con 'yt-dlp -U'...");
+                success = executeYtDlpSelfUpdate(ytDlpPath, logCallback);
             }
 
-            // Strategy 2: Fallback to yt-dlp -U if direct binary update fails
-            notify(logCallback, "⚠️ Reemplazo directo falló, intentando respaldo con 'yt-dlp -U'...");
-            return executeYtDlpSelfUpdate(ytDlpPath, logCallback);
+            if (success) {
+                notify(logCallback, "Etapa 4/4: ✓ Actualización completada correctamente.");
+            } else {
+                notify(logCallback, "❌ La actualización de yt-dlp no se pudo completar.");
+            }
+
+            updateHistory.recordUpdate(current, info.getLatestVersion(), success);
+            return success;
         });
     }
 
