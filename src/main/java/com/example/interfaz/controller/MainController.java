@@ -62,6 +62,8 @@ public class MainController {
     @FXML
     Label musicFolderLabel;
     @FXML
+    Label ytDlpStatusLabel;
+    @FXML
     Label ytDlpVersionLabel;
     @FXML
     Button updateYtDlpButton;
@@ -74,6 +76,7 @@ public class MainController {
     private FolderChooserService folderChooserService;
     private DownloadProgressParser progressParser;
     private com.example.interfaz.service.download.YtDlpUpdateService ytDlpUpdateService;
+    private com.example.interfaz.service.update.UpdateInfo lastUpdateInfo;
 
     private DownloadCoordinator downloadCoordinator;
     private DownloadService downloadService;
@@ -117,8 +120,25 @@ public class MainController {
 
     private void loadYtDlpVersion() {
         if (ytDlpVersionLabel != null && ytDlpUpdateService != null) {
-            java.util.concurrent.CompletableFuture.supplyAsync(() -> ytDlpUpdateService.getCurrentVersion())
-                    .thenAccept(ver -> Platform.runLater(() -> ytDlpVersionLabel.setText("Ver: " + ver)));
+            ytDlpUpdateService.checkUpdateAsync().thenAccept(info -> Platform.runLater(() -> {
+                this.lastUpdateInfo = info;
+                ytDlpVersionLabel.setText("Ver: " + info.getCurrentVersion());
+                if (info.isUpdateAvailable()) {
+                    if (ytDlpStatusLabel != null) {
+                        ytDlpStatusLabel.setText("Estado: ⚡ Nueva v" + info.getLatestVersion());
+                    }
+                    if (updateYtDlpButton != null) {
+                        updateYtDlpButton.setText("Actualizar ahora");
+                    }
+                } else {
+                    if (ytDlpStatusLabel != null) {
+                        ytDlpStatusLabel.setText("Estado: ✓ Al día");
+                    }
+                    if (updateYtDlpButton != null) {
+                        updateYtDlpButton.setText("Buscar actualización");
+                    }
+                }
+            }));
         }
     }
 
@@ -251,22 +271,37 @@ public class MainController {
         if (updateYtDlpButton != null) {
             updateYtDlpButton.setDisable(true);
         }
-        if (ytDlpVersionLabel != null) {
-            ytDlpVersionLabel.setText("Actualizando...");
+        if (ytDlpStatusLabel != null) {
+            ytDlpStatusLabel.setText("Estado: Procesando...");
         }
 
-        ytDlpUpdateService.updateYtDlpAsync(logLine -> LOGGER.info("[yt-dlp update UI] {}", logLine))
-                .thenAccept(success -> Platform.runLater(() -> {
-                    if (updateYtDlpButton != null) {
-                        updateYtDlpButton.setDisable(false);
-                    }
-                    loadYtDlpVersion();
-                    if (success) {
-                        dialogService.showInfo("Actualización yt-dlp", "yt-dlp se ha actualizado correctamente a la última versión.");
-                    } else {
-                        dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
-                    }
-                }));
+        if (lastUpdateInfo != null && lastUpdateInfo.isUpdateAvailable()) {
+            ytDlpUpdateService.updateYtDlpAsync(logLine -> LOGGER.info("[yt-dlp update UI] {}", logLine))
+                    .thenAccept(success -> Platform.runLater(() -> {
+                        if (updateYtDlpButton != null) {
+                            updateYtDlpButton.setDisable(false);
+                        }
+                        loadYtDlpVersion();
+                        if (success) {
+                            dialogService.showInfo("Actualización yt-dlp", "yt-dlp se ha actualizado correctamente a la última versión.");
+                        } else {
+                            dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
+                        }
+                    }));
+        } else {
+            ytDlpUpdateService.checkUpdateAsync().thenAccept(info -> Platform.runLater(() -> {
+                this.lastUpdateInfo = info;
+                if (updateYtDlpButton != null) {
+                    updateYtDlpButton.setDisable(false);
+                }
+                loadYtDlpVersion();
+                if (info.isUpdateAvailable()) {
+                    dialogService.showInfo("Actualización disponible", "Nueva versión disponible: " + info.getLatestVersion() + ".\nHaz clic en 'Actualizar ahora' para continuar.");
+                } else {
+                    dialogService.showInfo("yt-dlp al día", "Ya cuentas con la versión más reciente de yt-dlp (" + info.getCurrentVersion() + ").");
+                }
+            }));
+        }
     }
 
     public QueueController getQueueController() {

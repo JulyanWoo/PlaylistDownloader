@@ -92,8 +92,9 @@
                         <Label text="yt-dlp Engine" styleClass="card-title" />
                      </children>
                   </HBox>
+                  <Label fx:id="ytDlpStatusLabel" text="Estado: Comprobando..." styleClass="folder-path-text" wrapText="true" />
                   <Label fx:id="ytDlpVersionLabel" text="Ver: Cargando..." styleClass="folder-path-text" wrapText="true" />
-                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" text="Actualizar yt-dlp" styleClass="button, sm">
+                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" text="Buscar actualización" styleClass="button, sm">
                      <graphic>
                         <FontIcon iconLiteral="mdi2u-update" iconSize="14" />
                      </graphic>
