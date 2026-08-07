@@ -23,19 +23,25 @@ public class BinaryUpdater {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinaryUpdater.class);
     private final HttpClient httpClient;
+    private final HashValidator hashValidator;
 
     public BinaryUpdater() {
-        this.httpClient = HttpClient.newBuilder()
+        this(HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.ALWAYS)
-                .build();
+                .build(), new HashValidator());
     }
 
     public BinaryUpdater(HttpClient httpClient) {
-        this.httpClient = httpClient;
+        this(httpClient, new HashValidator(httpClient));
     }
 
-    public boolean updateBinary(String targetPath, String downloadUrl, Consumer<String> logCallback) {
+    public BinaryUpdater(HttpClient httpClient, HashValidator hashValidator) {
+        this.httpClient = httpClient;
+        this.hashValidator = hashValidator != null ? hashValidator : new HashValidator(httpClient);
+    }
+
+    public boolean updateBinary(String targetPath, String downloadUrl, String sha256SumsUrl, Consumer<String> logCallback) {
         if (targetPath == null || targetPath.isBlank()) {
             notify(logCallback, "Ruta de ejecutable no válida.");
             return false;
@@ -58,6 +64,16 @@ public class BinaryUpdater {
                 notify(logCallback, "❌ Falló la descarga del nuevo binario.");
                 cleanUpQuietly(newFile);
                 return false;
+            }
+
+            if (sha256SumsUrl != null && !sha256SumsUrl.isBlank()) {
+                notify(logCallback, "Verificando suma de comprobación SHA-256...");
+                boolean hashOk = hashValidator.verifyFileHash(newFile, sha256SumsUrl);
+                if (!hashOk) {
+                    notify(logCallback, "❌ La suma de comprobación SHA-256 no coincide. Se cancela el reemplazo.");
+                    cleanUpQuietly(newFile);
+                    return false;
+                }
             }
 
             notify(logCallback, "Validando ejecutable descargado...");
@@ -94,6 +110,10 @@ public class BinaryUpdater {
             cleanUpQuietly(newFile);
             return false;
         }
+    }
+
+    public boolean updateBinary(String targetPath, String downloadUrl, Consumer<String> logCallback) {
+        return updateBinary(targetPath, downloadUrl, "", logCallback);
     }
 
     public boolean validateBinary(Path binaryPath) {

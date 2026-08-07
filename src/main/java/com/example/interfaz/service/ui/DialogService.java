@@ -26,6 +26,16 @@ public class DialogService {
         });
     }
 
+    public void showWarning(String title, String message) {
+        runOnFxThread(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
+
     public void showConfirmation(String title, String headerText, String contentText, Runnable onConfirm) {
         runOnFxThread(() -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);

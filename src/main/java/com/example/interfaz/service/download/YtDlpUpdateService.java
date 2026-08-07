@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ public class YtDlpUpdateService {
     private final BinaryResolver binaryResolver;
     private final ReleaseChecker releaseChecker;
     private final BinaryUpdater binaryUpdater;
+    private Supplier<Boolean> activeDownloadChecker;
 
     public YtDlpUpdateService(BinaryResolver binaryResolver, ReleaseChecker releaseChecker, BinaryUpdater binaryUpdater) {
         this.binaryResolver = binaryResolver;
@@ -29,6 +31,14 @@ public class YtDlpUpdateService {
 
     public YtDlpUpdateService() {
         this(new BinaryResolver(), new ReleaseChecker(), new BinaryUpdater());
+    }
+
+    public void setActiveDownloadChecker(Supplier<Boolean> activeDownloadChecker) {
+        this.activeDownloadChecker = activeDownloadChecker;
+    }
+
+    public boolean isDownloadActive() {
+        return activeDownloadChecker != null && Boolean.TRUE.equals(activeDownloadChecker.get());
     }
 
     public String getCurrentVersion() {
@@ -59,6 +69,11 @@ public class YtDlpUpdateService {
 
     public CompletableFuture<Boolean> updateYtDlpAsync(Consumer<String> logCallback) {
         return CompletableFuture.supplyAsync(() -> {
+            if (isDownloadActive()) {
+                notify(logCallback, "⚠️ No se puede actualizar yt-dlp mientras existen descargas activas en curso.");
+                return false;
+            }
+
             String ytDlpPath = binaryResolver.resolveYtDlpPath();
             String current = getCurrentVersion();
             UpdateInfo info = releaseChecker.checkForUpdates(current);
@@ -69,8 +84,8 @@ public class YtDlpUpdateService {
                 notify(logCallback, "Última versión detectada: " + info.getLatestVersion());
             }
 
-            // Strategy 1: Safe binary updater (GitHub download -> validate -> atomic swap -> rollback)
-            boolean success = binaryUpdater.updateBinary(ytDlpPath, info.getDownloadUrl(), logCallback);
+            // Strategy 1: Safe binary updater (GitHub download -> SHA256 check -> validate -> atomic swap -> rollback)
+            boolean success = binaryUpdater.updateBinary(ytDlpPath, info.getDownloadUrl(), info.getSha256SumsUrl(), logCallback);
 
             if (success) {
                 notify(logCallback, "✓ Actualización mediante reemplazo directo completada.");
