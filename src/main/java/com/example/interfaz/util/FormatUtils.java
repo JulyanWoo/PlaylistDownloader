@@ -24,4 +24,27 @@ public final class FormatUtils {
         char pre = "KMGTPE".charAt(exp - 1);
         return String.format("%.1f %cB", bytes / Math.pow(1024, exp), pre);
     }
+
+    public static String abbreviatePath(String pathStr, int maxLength) {
+        if (pathStr == null || pathStr.length() <= maxLength) {
+            return pathStr != null ? pathStr : "";
+        }
+        String normalized = pathStr.replace('/', '\\');
+        int lastSep = normalized.lastIndexOf('\\');
+        if (lastSep == -1) {
+            return normalized.substring(0, maxLength - 3) + "...";
+        }
+        String fileName = normalized.substring(lastSep);
+        int prevSep = normalized.lastIndexOf('\\', lastSep - 1);
+        String parentDir = prevSep != -1 ? normalized.substring(prevSep, lastSep) : "";
+
+        int prefixLen = Math.min(12, lastSep);
+        String prefix = normalized.substring(0, prefixLen);
+
+        String result = prefix + "\\...\\" + parentDir + fileName;
+        if (result.length() > maxLength) {
+            return prefix + "\\...\\" + fileName;
+        }
+        return result;
+    }
 }
