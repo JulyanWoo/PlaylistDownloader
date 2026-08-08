@@ -7,10 +7,13 @@ import com.example.interfaz.model.analyzer.DuplicateGroup;
 
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeTableCell;
 import javafx.scene.control.TreeTableColumn;
+import javafx.scene.control.TreeTableRow;
 import javafx.scene.control.TreeTableView;
-import javafx.scene.control.cell.CheckBoxTreeTableCell;
 
 public class AnalyzerTableConfigurator {
 
@@ -30,33 +33,164 @@ public class AnalyzerTableConfigurator {
         TreeItem<AnalyzerRowModel> root = new TreeItem<>(new AnalyzerRowModel("Root", null, null));
         resultsTreeTable.setRoot(root);
         resultsTreeTable.setShowRoot(false);
-
-        colSelect.setCellValueFactory(param -> {
-            AnalyzerRowModel model = param.getValue().getValue();
-            if (model == null || model.isGroup()) {
-                return new SimpleBooleanProperty(false);
-            }
-            SimpleBooleanProperty prop = new SimpleBooleanProperty(model.getCandidate().isSelectedForDeletion());
-            prop.addListener((obs, oldVal, newVal) -> {
-                model.getCandidate().setSelectedForDeletion(newVal);
-                if (onSelectionChanged != null) {
-                    onSelectionChanged.run();
-                }
-            });
-            return prop;
-        });
-        colSelect.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(colSelect));
-        colSelect.setEditable(true);
         resultsTreeTable.setEditable(true);
 
-        colName.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getName)));
+        resultsTreeTable.setRowFactory(tv -> new TreeTableRow<>() {
+            @Override
+            protected void updateItem(AnalyzerRowModel item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("analyzer-group-row", "analyzer-child-row", "analyzer-original-row", "analyzer-deletion-row");
+                if (empty || item == null) {
+                    setStyle("");
+                } else if (item.isGroup()) {
+                    getStyleClass().add("analyzer-group-row");
+                } else {
+                    getStyleClass().add("analyzer-child-row");
+                    if (item.getCandidate() != null) {
+                        if (item.getCandidate().isOriginal()) {
+                            getStyleClass().add("analyzer-original-row");
+                        } else if (item.getCandidate().isSelectedForDeletion()) {
+                            getStyleClass().add("analyzer-deletion-row");
+                        }
+                    }
+                }
+            }
+        });
+
+        colSelect.setCellValueFactory(param -> {
+            AnalyzerRowModel model = getValueModel(param);
+            if (model == null) {
+                return new SimpleBooleanProperty(false);
+            }
+            if (model.isGroup()) {
+                boolean allCopiesSelected = model.getGroup() != null && !model.getGroup().getCandidates().isEmpty()
+                        && model.getGroup().getCandidates().stream().filter(c -> !c.isOriginal()).allMatch(DuplicateCandidate::isSelectedForDeletion);
+                return new SimpleBooleanProperty(allCopiesSelected);
+            }
+            if (model.getCandidate() != null) {
+                if (model.getCandidate().isOriginal()) {
+                    return new SimpleBooleanProperty(false);
+                }
+                return new SimpleBooleanProperty(model.getCandidate().isSelectedForDeletion());
+            }
+            return new SimpleBooleanProperty(false);
+        });
+
+        colSelect.setCellFactory(column -> new TreeTableCell<>() {
+            private final CheckBox checkBox = new CheckBox();
+
+            {
+                checkBox.setOnAction(e -> {
+                    TreeItem<AnalyzerRowModel> treeItem = getTableRow() != null ? getTableRow().getTreeItem() : null;
+                    if (treeItem == null || treeItem.getValue() == null) return;
+                    AnalyzerRowModel model = treeItem.getValue();
+                    boolean isChecked = checkBox.isSelected();
+                    if (model.isGroup()) {
+                        if (model.getGroup() != null) {
+                            for (DuplicateCandidate c : model.getGroup().getCandidates()) {
+                                if (!c.isOriginal()) {
+                                    c.setSelectedForDeletion(isChecked);
+                                }
+                            }
+                        }
+                    } else if (model.getCandidate() != null && !model.getCandidate().isOriginal()) {
+                        model.getCandidate().setSelectedForDeletion(isChecked);
+                    }
+                    if (onSelectionChanged != null) {
+                        onSelectionChanged.run();
+                    }
+                    resultsTreeTable.refresh();
+                });
+            }
+
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getTreeItem() == null) {
+                    setGraphic(null);
+                } else {
+                    AnalyzerRowModel model = getTableRow().getTreeItem().getValue();
+                    if (model == null) {
+                        setGraphic(null);
+                    } else if (model.isGroup()) {
+                        boolean allCopiesSelected = model.getGroup() != null && !model.getGroup().getCandidates().isEmpty()
+                                && model.getGroup().getCandidates().stream().filter(c -> !c.isOriginal()).allMatch(DuplicateCandidate::isSelectedForDeletion);
+                        checkBox.setSelected(allCopiesSelected);
+                        checkBox.setDisable(false);
+                        setGraphic(checkBox);
+                    } else if (model.getCandidate() != null) {
+                        if (model.getCandidate().isOriginal()) {
+                            checkBox.setSelected(false);
+                            checkBox.setDisable(true);
+                            setGraphic(checkBox);
+                        } else {
+                            checkBox.setSelected(model.getCandidate().isSelectedForDeletion());
+                            checkBox.setDisable(false);
+                            setGraphic(checkBox);
+                        }
+                    } else {
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
+
+        colName.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getDisplayName)));
         colArtist.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getArtist)));
         colDuration.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getDurationFormatted)));
         colSize.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getSizeFormatted)));
         colType.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getType)));
         colLanguage.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getLanguageFormatted)));
-        colStatus.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getStatus)));
-        colPath.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getPath)));
+
+        colStatus.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getStatusClean)));
+        colStatus.setCellFactory(column -> new TreeTableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    setText(item);
+                    TreeItem<AnalyzerRowModel> treeItem = getTableRow() != null ? getTableRow().getTreeItem() : null;
+                    if (treeItem != null && treeItem.getValue() != null) {
+                        String details = treeItem.getValue().getScoreDetails();
+                        if (details != null && !details.isEmpty()) {
+                            setTooltip(new Tooltip(details));
+                        } else {
+                            setTooltip(null);
+                        }
+                    } else {
+                        setTooltip(null);
+                    }
+                }
+            }
+        });
+
+        colPath.setCellValueFactory(param -> new SimpleStringProperty(getValueSafely(param, AnalyzerRowModel::getAbbreviatedPath)));
+        colPath.setCellFactory(column -> new TreeTableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    setText(item);
+                    TreeItem<AnalyzerRowModel> treeItem = getTableRow() != null ? getTableRow().getTreeItem() : null;
+                    if (treeItem != null && treeItem.getValue() != null) {
+                        String fullPath = treeItem.getValue().getPath();
+                        if (fullPath != null && !fullPath.isEmpty()) {
+                            setTooltip(new Tooltip(fullPath));
+                        } else {
+                            setTooltip(null);
+                        }
+                    } else {
+                        setTooltip(null);
+                    }
+                }
+            }
+        });
     }
 
     public void populate(TreeTableView<AnalyzerRowModel> resultsTreeTable, List<DuplicateGroup> groups) {
@@ -97,9 +231,17 @@ public class AnalyzerTableConfigurator {
         }
     }
 
+    private AnalyzerRowModel getValueModel(TreeTableColumn.CellDataFeatures<AnalyzerRowModel, ?> param) {
+        if (param != null && param.getValue() != null) {
+            return param.getValue().getValue();
+        }
+        return null;
+    }
+
     private String getValueSafely(TreeTableColumn.CellDataFeatures<AnalyzerRowModel, String> param, java.util.function.Function<AnalyzerRowModel, String> extractor) {
-        if (param != null && param.getValue() != null && param.getValue().getValue() != null) {
-            return extractor.apply(param.getValue().getValue());
+        AnalyzerRowModel model = getValueModel(param);
+        if (model != null) {
+            return extractor.apply(model);
         }
         return "";
     }

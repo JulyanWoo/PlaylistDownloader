@@ -72,11 +72,61 @@ public class AnalyzerRowModel {
         return String.format("%s (%d%% sim)", action, simPct);
     }
 
+    public String getDisplayName() {
+        if (candidate != null && candidate.isOriginal()) {
+            return "🛡️ " + name;
+        }
+        return name;
+    }
+
+    public String getStatusClean() {
+        if (isGroup()) {
+            if (group != null && group.getClassification() != null) {
+                return String.format("%s (%d%%)", group.getClassification().getDisplayName(), group.getConfidencePercentage());
+            }
+            return "Grupo";
+        }
+        if (candidate.isOriginal()) {
+            return "Original";
+        }
+        return candidate.isSelectedForDeletion() ? "Copia a eliminar" : "Conservar";
+    }
+
+    public String getScoreDetails() {
+        if (isGroup()) {
+            if (group != null && group.getClassification() != null) {
+                return String.format("Clasificación de grupo: %s\nConfianza del algoritmo: %d%%",
+                        group.getClassification().getDisplayName(), group.getConfidencePercentage());
+            }
+            return "Información de grupo";
+        }
+        if (candidate != null) {
+            StringBuilder sb = new StringBuilder();
+            if (candidate.isOriginal()) {
+                sb.append("🟢 Archivo Original (Conservación prioritaria)\n");
+                sb.append("Puntuación de calidad: ").append(candidate.getOriginalScore()).append(" pts\n");
+            } else {
+                sb.append("Similitud con el original: ").append(candidate.getSimilarityPercentage()).append("%\n");
+                sb.append("Puntuación de calidad: ").append(candidate.getOriginalScore()).append(" pts\n");
+                sb.append("Acción: ").append(candidate.isSelectedForDeletion() ? "Marcado para mover a cuarentena" : "Se conservará").append("\n");
+            }
+            if (candidate.getScoreReasons() != null && !candidate.getScoreReasons().isEmpty()) {
+                sb.append("Criterios del análisis:\n• ").append(String.join("\n• ", candidate.getScoreReasons()));
+            }
+            return sb.toString();
+        }
+        return "";
+    }
+
     public String getPath() {
         if (candidate != null) {
             return candidate.getSongFile().getPath().toString();
         }
         return "";
+    }
+
+    public String getAbbreviatedPath() {
+        return FormatUtils.abbreviatePath(getPath(), 42);
     }
 
     public String getLanguageFormatted() {
