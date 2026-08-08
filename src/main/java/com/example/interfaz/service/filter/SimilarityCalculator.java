@@ -1,8 +1,14 @@
 package com.example.interfaz.service.filter;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-public class SimilarityCalculator {
+public final class SimilarityCalculator {
+
+    private SimilarityCalculator() {
+    }
 
     public static double calculateCombinedSimilarity(String normalizedTitle1, String normalizedTitle2) {
         if (normalizedTitle1 == null || normalizedTitle2 == null) {
@@ -21,6 +27,9 @@ public class SimilarityCalculator {
     }
 
     public static double calculateLevenshteinSimilarity(String s1, String s2) {
+        if (s1 == null || s2 == null) {
+            return 0.0;
+        }
         int maxLength = Math.max(s1.length(), s2.length());
         if (maxLength == 0) {
             return 1.0;
@@ -31,8 +40,11 @@ public class SimilarityCalculator {
     }
 
     public static double calculateJaccardSimilarity(String s1, String s2) {
-        Set<String> words1 = new HashSet<>(Arrays.asList(s1.split("\\s+")));
-        Set<String> words2 = new HashSet<>(Arrays.asList(s2.split("\\s+")));
+        if (s1 == null || s2 == null) {
+            return 0.0;
+        }
+        Set<String> words1 = new HashSet<>(Arrays.asList(s1.trim().split("\\s+")));
+        Set<String> words2 = new HashSet<>(Arrays.asList(s2.trim().split("\\s+")));
 
         Set<String> intersection = new HashSet<>(words1);
         intersection.retainAll(words2);
@@ -44,31 +56,42 @@ public class SimilarityCalculator {
     }
 
     public static double calculateContainmentSimilarity(String s1, String s2) {
-        if (s1.isEmpty() || s2.isEmpty()) {
+        if (s1 == null || s2 == null || s1.isBlank() || s2.isBlank()) {
             return 0.0;
         }
 
         if (s1.contains(s2) || s2.contains(s1)) {
-            return 0.8; 
+            return 0.8;
         }
 
-        String[] words1 = s1.split("\\s+");
-        String[] words2 = s2.split("\\s+");
+        String[] words1 = s1.trim().split("\\s+");
+        String[] words2 = s2.trim().split("\\s+");
 
         int matches = 0;
         for (String word1 : words1) {
             for (String word2 : words2) {
-                if (word1.length() > 2 && word2.length() > 2 && 
-                    (word1.contains(word2) || word2.contains(word1))) {
+                if (word1.length() > 2 && word2.length() > 2
+                        && (word1.contains(word2) || word2.contains(word1))) {
                     matches++;
                 }
             }
         }
 
-        return (double) matches / Math.max(words1.length, words2.length);
+        double rawRatio = (double) matches / Math.max(words1.length, words2.length);
+        return Math.min(1.0, rawRatio);
     }
 
     public static int levenshteinDistance(String s1, String s2) {
+        if (s1 == null && s2 == null) {
+            return 0;
+        }
+        if (s1 == null) {
+            return s2.length();
+        }
+        if (s2 == null) {
+            return s1.length();
+        }
+
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
 
         for (int i = 0; i <= s1.length(); i++) {
@@ -100,7 +123,7 @@ public class SimilarityCalculator {
     }
 
     public static String findMostSimilar(String target, List<String> candidates) {
-        if (candidates == null || candidates.isEmpty()) {
+        if (candidates == null || candidates.isEmpty() || target == null) {
             return null;
         }
 
@@ -109,6 +132,9 @@ public class SimilarityCalculator {
         double maxSimilarity = 0.0;
 
         for (String candidate : candidates) {
+            if (candidate == null) {
+                continue;
+            }
             String normalizedCandidate = TitleNormalizer.normalize(candidate);
             double similarity = calculateCombinedSimilarity(normalizedTarget, normalizedCandidate);
 

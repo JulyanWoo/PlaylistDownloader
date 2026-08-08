@@ -119,17 +119,21 @@ public class Song {
     }
 
     public String getNormalizedTitle() {
-        if (title == null) return "";
+        if (title == null) {
+            return "";
+        }
 
         return title.toLowerCase()
-                   .replaceAll("[\\[\\](){}]", "")
-                   .replaceAll("\\s*(official|video|lyrics|audio|hd|4k)\\s*", "")
-                   .replaceAll("\\s+", " ")
-                   .trim();
+                .replaceAll("[\\[\\](){}]", "")
+                .replaceAll("\\s*(official|video|lyrics|audio|hd|4k)\\s*", "")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     public String getFormattedFileSize() {
-        if (fileSize <= 0) return "Desconocido";
+        if (fileSize <= 0) {
+            return "Desconocido";
+        }
 
         double size = fileSize;
         String[] units = {"B", "KB", "MB", "GB"};
@@ -145,8 +149,12 @@ public class Song {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         Song song = (Song) o;
         return Objects.equals(getNormalizedTitle(), song.getNormalizedTitle());
     }
@@ -158,12 +166,12 @@ public class Song {
 
     @Override
     public String toString() {
-        return "Song{" +
-                "title='" + title + '\'' +
-                ", artist='" + artist + '\'' +
-                ", fileName='" + fileName + '\'' +
-                ", isDownloaded=" + isDownloaded +
-                '}';
+        return "Song{"
+                + "title='" + title + '\''
+                + ", artist='" + artist + '\''
+                + ", fileName='" + fileName + '\''
+                + ", isDownloaded=" + isDownloaded
+                + '}';
     }
 
     public String toDisplayString() {

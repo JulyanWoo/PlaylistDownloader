@@ -1,13 +1,12 @@
 package com.example.interfaz.controller;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.example.interfaz.event.EventPublisher;
-import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.*;
 import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisCancelled;
 import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisFinished;
 import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisStarted;
@@ -15,30 +14,46 @@ import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryProgressU
 import com.example.interfaz.factory.ServiceFactory;
 import com.example.interfaz.model.analyzer.DuplicateCandidate;
 import com.example.interfaz.model.analyzer.DuplicateGroup;
-import com.example.interfaz.model.analyzer.LibraryAnalysisResult;
+import com.example.interfaz.model.analyzer.LanguageDetectorMode;
+import com.example.interfaz.model.analyzer.SongFile;
+import com.example.interfaz.service.analyzer.DuplicateManagementService;
+import com.example.interfaz.service.analyzer.DuplicateSelectionService;
 import com.example.interfaz.service.analyzer.LibraryAnalyzerService;
+import com.example.interfaz.service.analyzer.SongLanguageBrowserService;
 import com.example.interfaz.service.ui.DialogService;
+import com.example.interfaz.service.ui.analyzer.AnalyzerRowModel;
+import com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator;
+import com.example.interfaz.service.ui.analyzer.LanguageSongRowModel;
+import com.example.interfaz.viewmodel.LibraryAnalyzerViewModel;
 
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.control.TreeItem;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
-import javafx.scene.control.cell.CheckBoxTreeTableCell;
+import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
-public class LibraryAnalyzerController {
+@SuppressWarnings({"unused", "FXML"})
+public class LibraryAnalyzerController implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LibraryAnalyzerController.class);
 
+    // ── Analysis controls ─────────────────────────────────────────────────────
     @FXML private Button btnStartAnalysis;
     @FXML private Button btnCancelAnalysis;
+    @FXML private ComboBox<LanguageDetectorMode> cmbLanguageMode;
     @FXML private VBox progressBox;
     @FXML private ProgressBar progressBar;
     @FXML private Label statusLabel;
@@ -52,6 +67,8 @@ public class LibraryAnalyzerController {
     @FXML private Label lblStatRecoverableSpace;
     @FXML private Label lblStatDuration;
 
+    // ── Duplicates pane ───────────────────────────────────────────────────────
+    @FXML private TitledPane duplicatesPane;
     @FXML private TreeTableView<AnalyzerRowModel> resultsTreeTable;
     @FXML private TreeTableColumn<AnalyzerRowModel, Boolean> colSelect;
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colName;
@@ -59,6 +76,7 @@ public class LibraryAnalyzerController {
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colDuration;
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colSize;
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colType;
+    @FXML private TreeTableColumn<AnalyzerRowModel, String> colLanguage;
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colStatus;
     @FXML private TreeTableColumn<AnalyzerRowModel, String> colPath;
 
@@ -68,184 +86,282 @@ public class LibraryAnalyzerController {
     @FXML private Button btnUnselectAll;
     @FXML private Button btnMoveToTrash;
 
+    // ── Language Browser pane ─────────────────────────────────────────────────
+    @FXML private TitledPane languageBrowserPane;
+    @FXML private ComboBox<String> cmbLangFilter;
+    @FXML private TextField txtLangSearch;
+    @FXML private Label lblLangCount;
+    @FXML private TableView<LanguageSongRowModel> langBrowserTable;
+    @FXML private TableColumn<LanguageSongRowModel, Boolean> colLangSelect;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangName;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangArtist;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangLang;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangConf;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangFormat;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangSize;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangPath;
+    @FXML private Label lblLangBrowserSummary;
+    @FXML private Button btnLangSelectAll;
+    @FXML private Button btnLangDeselectAll;
+    @FXML private Button btnLangQuarantine;
+
+    // ── Services ──────────────────────────────────────────────────────────────
     private LibraryAnalyzerService libraryAnalyzerService;
+    private DuplicateSelectionService duplicateSelectionService;
+    private DuplicateManagementService duplicateManagementService;
+    private SongLanguageBrowserService songLanguageBrowserService;
+    private AnalyzerTableConfigurator tableConfigurator;
     private DialogService dialogService;
     private EventPublisher eventPublisher;
 
-    private final List<DuplicateGroup> currentGroups = new ArrayList<>();
+    private final LibraryAnalyzerViewModel viewModel = new LibraryAnalyzerViewModel();
+
+    private final Consumer<LibraryAnalysisStarted> startedListener = this::onAnalysisStartedEvent;
+    private final Consumer<LibraryProgressUpdated> progressListener = this::onProgressUpdatedEvent;
+    private final Consumer<LibraryAnalysisFinished> finishedListener = this::onAnalysisFinishedEvent;
+    private final Consumer<LibraryAnalysisCancelled> cancelledListener = this::onAnalysisCancelledEvent;
 
     @FXML
     void initialize() {
         ServiceFactory factory = ServiceFactory.getInstance();
         this.libraryAnalyzerService = factory.getLibraryAnalyzerService();
+        this.duplicateSelectionService = factory.getDuplicateSelectionService();
+        this.duplicateManagementService = factory.getDuplicateManagementService();
+        this.songLanguageBrowserService = factory.getSongLanguageBrowserService();
+        this.tableConfigurator = factory.getAnalyzerTableConfigurator();
         this.dialogService = factory.getDialogService();
         this.eventPublisher = factory.getEventPublisher();
 
-        setupTableColumns();
+        setupBindings();
+        setupTable();
+        setupLanguageBrowser();
+        setupGroupListeners();
         registerEventSubscriptions();
     }
 
-    private void setupTableColumns() {
-        TreeItem<AnalyzerRowModel> root = new TreeItem<>(new AnalyzerRowModel("Root", null, null));
-        resultsTreeTable.setRoot(root);
-        resultsTreeTable.setShowRoot(false);
+    // ── Setup ─────────────────────────────────────────────────────────────────
 
-        colSelect.setCellValueFactory(param -> {
-            AnalyzerRowModel model = param.getValue().getValue();
-            if (model.isGroup()) {
-                return new SimpleBooleanProperty(false);
-            }
-            SimpleBooleanProperty prop = new SimpleBooleanProperty(model.getCandidate().isSelectedForDeletion());
-            prop.addListener((obs, oldVal, newVal) -> {
-                model.getCandidate().setSelectedForDeletion(newVal);
-                updateSelectedSummary();
+    private void setupBindings() {
+        btnStartAnalysis.disableProperty().bind(viewModel.analyzingProperty());
+        btnCancelAnalysis.disableProperty().bind(viewModel.analyzingProperty().not());
+
+        if (cmbLanguageMode != null) {
+            cmbLanguageMode.getItems().setAll(LanguageDetectorMode.values());
+            cmbLanguageMode.valueProperty().bindBidirectional(viewModel.languageDetectorModeProperty());
+            cmbLanguageMode.disableProperty().bind(viewModel.analyzingProperty());
+        }
+
+        progressBox.visibleProperty().bind(viewModel.analyzingProperty());
+        progressBox.managedProperty().bind(viewModel.analyzingProperty());
+
+        progressBar.progressProperty().bind(viewModel.progressProperty());
+        statusLabel.textProperty().bind(viewModel.statusTextProperty());
+        duplicatesFoundLabel.textProperty().bind(viewModel.duplicatesFoundTextProperty());
+        timeRemainingLabel.textProperty().bind(viewModel.timeRemainingTextProperty());
+
+        statsBox.visibleProperty().bind(viewModel.statsVisibleProperty());
+        statsBox.managedProperty().bind(viewModel.statsVisibleProperty());
+
+        lblStatTotalSongs.textProperty().bind(viewModel.statTotalSongsTextProperty());
+        lblStatTotalFiles.textProperty().bind(viewModel.statTotalFilesTextProperty());
+        lblStatGroups.textProperty().bind(viewModel.statGroupsTextProperty());
+        lblStatRecoverableSpace.textProperty().bind(viewModel.statRecoverableSpaceTextProperty());
+        lblStatDuration.textProperty().bind(viewModel.statDurationTextProperty());
+
+        selectedSummaryLabel.textProperty().bind(viewModel.selectedSummaryTextProperty());
+        lblLangBrowserSummary.textProperty().bind(viewModel.langBrowserSummaryTextProperty());
+    }
+
+    private void setupTable() {
+        tableConfigurator.configure(
+                resultsTreeTable,
+                colSelect, colName, colArtist, colDuration, colSize, colType, colLanguage, colStatus, colPath,
+                this::updateSelectedSummary
+        );
+    }
+
+    private void setupLanguageBrowser() {
+        // Populate language filter ComboBox
+        cmbLangFilter.getItems().setAll(
+                "Todos", "Español", "Inglés", "Portugués", "Francés",
+                "Asiático (CJK)", "Mixto / Bilingüe", "Desconocido"
+        );
+        cmbLangFilter.getSelectionModel().select("Todos");
+
+        // Bind ComboBox & search field to ViewModel
+        cmbLangFilter.valueProperty().addListener((obs, old, nv) -> {
+            viewModel.langFilterProperty().set(nv != null ? nv : "Todos");
+            refreshLangCount();
+        });
+
+        txtLangSearch.textProperty().bindBidirectional(viewModel.langSearchProperty());
+        txtLangSearch.textProperty().addListener((obs, old, nv) -> refreshLangCount());
+
+        // Configure TableView columns
+        langBrowserTable.setEditable(true);
+
+        colLangSelect.setCellValueFactory(param -> {
+            LanguageSongRowModel model = param.getValue();
+            SimpleBooleanProperty prop = new SimpleBooleanProperty(model.isSelected());
+            prop.addListener((obs, old, nv) -> {
+                model.setSelected(nv);
+                viewModel.updateLangBrowserSummary();
             });
             return prop;
         });
-        colSelect.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(colSelect));
-        colSelect.setEditable(true);
-        resultsTreeTable.setEditable(true);
+        colLangSelect.setCellFactory(CheckBoxTableCell.forTableColumn(colLangSelect));
+        colLangSelect.setEditable(true);
 
-        colName.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getName()));
-        colArtist.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getArtist()));
-        colDuration.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getDurationFormatted()));
-        colSize.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getSizeFormatted()));
-        colType.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getType()));
-        colStatus.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getStatus()));
-        colPath.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getValue().getPath()));
+        colLangName.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getName() : ""));
+
+        colLangArtist.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getArtist() : ""));
+
+        colLangLang.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getLanguage() : ""));
+        // Language cell factory with color coding
+        colLangLang.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle(getLangStyle(item));
+                }
+            }
+        });
+
+        colLangConf.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getConfidence() : ""));
+
+        colLangFormat.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getFormat() : ""));
+
+        colLangSize.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getSizeFormatted() : ""));
+
+        colLangPath.setCellValueFactory(param -> new javafx.beans.property.SimpleStringProperty(
+                param.getValue() != null ? param.getValue().getPath() : ""));
+
+        // Bind table to filtered list from ViewModel
+        langBrowserTable.setItems(viewModel.getFilteredSongModels());
+
+        // Update count label when filtered list changes
+        viewModel.getFilteredSongModels().addListener((javafx.collections.ListChangeListener<LanguageSongRowModel>) c -> refreshLangCount());
+    }
+
+    /** Returns an inline CSS style based on the detected language name. */
+    private String getLangStyle(String langName) {
+        if (langName == null) return "";
+        return switch (langName) {
+            case "Español" -> "-fx-text-fill: #4CAF50; -fx-font-weight: bold;";
+            case "Inglés" -> "-fx-text-fill: #2196F3; -fx-font-weight: bold;";
+            case "Portugués" -> "-fx-text-fill: #FF9800; -fx-font-weight: bold;";
+            case "Francés" -> "-fx-text-fill: #9C27B0; -fx-font-weight: bold;";
+            case "Asiático (CJK)" -> "-fx-text-fill: #F44336; -fx-font-weight: bold;";
+            case "Mixto / Bilingüe" -> "-fx-text-fill: #795548; -fx-font-weight: bold;";
+            default -> "-fx-text-fill: -color-fg-muted;";
+        };
+    }
+
+    private void refreshLangCount() {
+        int count = viewModel.getFilteredSongModels().size();
+        lblLangCount.setText(count + " canción" + (count == 1 ? "" : "es"));
+    }
+
+    private void setupGroupListeners() {
+        viewModel.getCurrentGroups().addListener((ListChangeListener<DuplicateGroup>) change -> refreshTable());
     }
 
     private void registerEventSubscriptions() {
         if (eventPublisher != null) {
-            eventPublisher.subscribe(LibraryAnalysisStarted.class, this::onAnalysisStartedEvent);
-            eventPublisher.subscribe(LibraryProgressUpdated.class, this::onProgressUpdatedEvent);
-            eventPublisher.subscribe(LibraryAnalysisFinished.class, this::onAnalysisFinishedEvent);
-            eventPublisher.subscribe(LibraryAnalysisCancelled.class, this::onAnalysisCancelledEvent);
+            eventPublisher.subscribe(LibraryAnalysisStarted.class, startedListener);
+            eventPublisher.subscribe(LibraryProgressUpdated.class, progressListener);
+            eventPublisher.subscribe(LibraryAnalysisFinished.class, finishedListener);
+            eventPublisher.subscribe(LibraryAnalysisCancelled.class, cancelledListener);
         }
     }
 
+    private void unregisterEventSubscriptions() {
+        if (eventPublisher != null) {
+            eventPublisher.unsubscribe(LibraryAnalysisStarted.class, startedListener);
+            eventPublisher.unsubscribe(LibraryProgressUpdated.class, progressListener);
+            eventPublisher.unsubscribe(LibraryAnalysisFinished.class, finishedListener);
+            eventPublisher.unsubscribe(LibraryAnalysisCancelled.class, cancelledListener);
+        }
+    }
+
+    // ── Event handlers ────────────────────────────────────────────────────────
+
     private void onAnalysisStartedEvent(LibraryAnalysisStarted event) {
-        Platform.runLater(() -> {
-            btnStartAnalysis.setDisable(true);
-            btnCancelAnalysis.setDisable(false);
-            progressBox.setVisible(true);
-            progressBox.setManaged(true);
-            statsBox.setVisible(false);
-            statsBox.setManaged(false);
-            progressBar.setProgress(0.0);
-            statusLabel.setText("Iniciando análisis en: " + event.getFolderPath());
-            duplicatesFoundLabel.setText("Duplicados: 0");
-            timeRemainingLabel.setText("Tiempo restante: --:--");
-            clearResultsTable();
-        });
+        safeUpdate(() -> viewModel.startAnalysis(event.getFolderPath()));
     }
 
     private void onProgressUpdatedEvent(LibraryProgressUpdated event) {
-        Platform.runLater(() -> {
-            double progress = event.getTotalFiles() > 0
-                    ? (double) event.getProcessedSongs() / event.getTotalFiles()
-                    : 0.0;
-            progressBar.setProgress(progress);
-            statusLabel.setText(String.format("Analizando %d / %d canciones", event.getProcessedSongs(), event.getTotalFiles()));
-            duplicatesFoundLabel.setText("Duplicados encontrados: " + event.getDuplicatesFound());
-            timeRemainingLabel.setText("Tiempo restante: " + formatDuration(event.getEstimatedRemainingMillis()));
-        });
+        safeUpdate(() -> viewModel.updateProgress(
+                event.getProcessedSongs(),
+                event.getTotalFiles(),
+                event.getDuplicatesFound(),
+                event.getEstimatedRemainingMillis()
+        ));
     }
 
     private void onAnalysisFinishedEvent(LibraryAnalysisFinished event) {
-        Platform.runLater(() -> {
-            btnStartAnalysis.setDisable(false);
-            btnCancelAnalysis.setDisable(true);
-            progressBox.setVisible(false);
-            progressBox.setManaged(false);
-            displayResults(event.getResult());
+        safeUpdate(() -> {
+            viewModel.finishAnalysis(event.getResult());
+            updateSelectedSummary();
+            refreshLangCount();
+            // Auto-expand Language Browser pane if songs were detected
+            if (event.getResult().getAllSongs() != null && !event.getResult().getAllSongs().isEmpty()) {
+                languageBrowserPane.setExpanded(true);
+            }
         });
     }
 
     private void onAnalysisCancelledEvent(LibraryAnalysisCancelled event) {
-        Platform.runLater(() -> {
-            btnStartAnalysis.setDisable(false);
-            btnCancelAnalysis.setDisable(true);
-            progressBox.setVisible(false);
-            progressBox.setManaged(false);
-            displayResults(event.getPartialResult());
+        safeUpdate(() -> {
+            viewModel.cancelAnalysis(event.getPartialResult());
+            updateSelectedSummary();
+            refreshLangCount();
             if (dialogService != null) {
                 dialogService.showInfo("Análisis cancelado", "El análisis fue cancelado por el usuario. Se muestran los resultados parciales.");
             }
         });
     }
 
-    private void displayResults(LibraryAnalysisResult result) {
-        if (result == null) return;
-
-        statsBox.setVisible(true);
-        statsBox.setManaged(true);
-        lblStatTotalSongs.setText(String.valueOf(result.getTotalSongs()));
-        lblStatTotalFiles.setText(String.valueOf(result.getTotalFiles()));
-        lblStatGroups.setText(String.valueOf(result.getGroups().size()));
-        lblStatRecoverableSpace.setText(formatSize(result.getRecoverableSpaceBytes()));
-        lblStatDuration.setText(formatDuration(result.getTotalDurationMillis()));
-
-        currentGroups.clear();
-        currentGroups.addAll(result.getGroups());
-
-        populateTreeTable(result.getGroups());
-        updateSelectedSummary();
-    }
-
-    private void populateTreeTable(List<DuplicateGroup> groups) {
-        TreeItem<AnalyzerRowModel> root = resultsTreeTable.getRoot();
-        root.getChildren().clear();
-
-        for (DuplicateGroup group : groups) {
-            AnalyzerRowModel groupModel = new AnalyzerRowModel(
-                    "▼ " + group.getGroupName() + " (" + group.getCandidates().size() + " archivos)",
-                    group,
-                    null
-            );
-            TreeItem<AnalyzerRowModel> groupItem = new TreeItem<>(groupModel);
-            groupItem.setExpanded(true);
-
-            for (DuplicateCandidate candidate : group.getCandidates()) {
-                AnalyzerRowModel candidateModel = new AnalyzerRowModel(
-                        candidate.getSongFile().getFileName(),
-                        group,
-                        candidate
-                );
-                TreeItem<AnalyzerRowModel> candidateItem = new TreeItem<>(candidateModel);
-                groupItem.getChildren().add(candidateItem);
-            }
-
-            root.getChildren().add(groupItem);
+    private void refreshTable() {
+        tableConfigurator.populate(resultsTreeTable, viewModel.getCurrentGroups());
+        // Update duplicate pane title with count
+        if (duplicatesPane != null) {
+            int count = viewModel.getCurrentGroups().size();
+            duplicatesPane.setText("  Canciones Duplicadas" + (count > 0 ? " (" + count + " grupos)" : ""));
         }
-    }
-
-    private void clearResultsTable() {
-        if (resultsTreeTable.getRoot() != null) {
-            resultsTreeTable.getRoot().getChildren().clear();
-        }
-        currentGroups.clear();
-        updateSelectedSummary();
     }
 
     private void updateSelectedSummary() {
-        int selectedCount = 0;
-        long bytes = 0;
-        for (DuplicateGroup group : currentGroups) {
-            for (DuplicateCandidate candidate : group.getCandidates()) {
-                if (candidate.isSelectedForDeletion()) {
-                    selectedCount++;
-                    bytes += candidate.getSongFile().getSize();
-                }
-            }
-        }
-        selectedSummaryLabel.setText(String.format("%d duplicados seleccionados (%s a liberar)", selectedCount, formatSize(bytes)));
+        var summary = duplicateSelectionService.calculateSelectionSummary(viewModel.getCurrentGroups());
+        viewModel.selectedSummaryTextProperty().set(summary.getFormattedSummary());
     }
+
+    // ── Duplicate pane actions ────────────────────────────────────────────────
 
     @FXML
     void onStartAnalysis() {
+        if (viewModel.analyzingProperty().get()) return;
         if (libraryAnalyzerService != null) {
-            libraryAnalyzerService.startAnalysis();
+            try {
+                libraryAnalyzerService.setLanguageDetectorMode(viewModel.getLanguageDetectorMode());
+                libraryAnalyzerService.startAnalysis();
+            } catch (Exception e) {
+                LOGGER.error("Error al iniciar el análisis de biblioteca", e);
+                if (dialogService != null) {
+                    dialogService.showError("Error de análisis", "No se pudo iniciar el análisis: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -258,63 +374,28 @@ public class LibraryAnalyzerController {
 
     @FXML
     void onKeepOriginal() {
-        for (DuplicateGroup group : currentGroups) {
-            List<DuplicateCandidate> candidates = group.getCandidates();
-            if (candidates.isEmpty()) continue;
-
-            DuplicateCandidate original = candidates.get(0);
-            for (DuplicateCandidate c : candidates) {
-                if (c.isOriginal()) {
-                    original = c;
-                    break;
-                }
-            }
-
-            for (DuplicateCandidate c : candidates) {
-                if (c == original) {
-                    c.setSelectedForDeletion(false);
-                } else {
-                    c.setSelectedForDeletion(true);
-                }
-            }
-        }
-        populateTreeTable(currentGroups);
+        duplicateSelectionService.keepOriginals(viewModel.getCurrentGroups());
+        refreshTable();
         updateSelectedSummary();
     }
 
     @FXML
     void onSelectDuplicates() {
-        for (DuplicateGroup group : currentGroups) {
-            for (DuplicateCandidate c : group.getCandidates()) {
-                c.setSelectedForDeletion(!c.isOriginal());
-            }
-        }
-        populateTreeTable(currentGroups);
+        duplicateSelectionService.selectDuplicates(viewModel.getCurrentGroups());
+        refreshTable();
         updateSelectedSummary();
     }
 
     @FXML
     void onUnselectAll() {
-        for (DuplicateGroup group : currentGroups) {
-            for (DuplicateCandidate c : group.getCandidates()) {
-                c.setSelectedForDeletion(false);
-            }
-        }
-        populateTreeTable(currentGroups);
+        duplicateSelectionService.unselectAll(viewModel.getCurrentGroups());
+        refreshTable();
         updateSelectedSummary();
     }
 
     @FXML
     void onMoveToTrash() {
-        List<DuplicateCandidate> selected = new ArrayList<>();
-        for (DuplicateGroup group : currentGroups) {
-            for (DuplicateCandidate c : group.getCandidates()) {
-                if (c.isSelectedForDeletion()) {
-                    selected.add(c);
-                }
-            }
-        }
-
+        List<DuplicateCandidate> selected = duplicateSelectionService.getSelectedCandidates(viewModel.getCurrentGroups());
         if (selected.isEmpty()) {
             if (dialogService != null) {
                 dialogService.showInfo("Sin selección", "No hay archivos marcados para mover a cuarentena.");
@@ -322,107 +403,82 @@ public class LibraryAnalyzerController {
             return;
         }
 
-        int moved = libraryAnalyzerService.moveToQuarantine(selected);
+        var result = duplicateManagementService.moveSelectedToQuarantine(selected, viewModel.getCurrentGroups());
         if (dialogService != null) {
-            dialogService.showInfo("Archivos movidos", String.format("Se movieron correctamente %d archivos a la carpeta de cuarentena (.duplicates).", moved));
+            dialogService.showInfo("Archivos movidos", String.format(
+                    "Se movieron correctamente %d archivos a la carpeta de cuarentena (.duplicates).", result.countMoved()));
         }
 
-        // Re-filter removed items from group list
-        List<DuplicateGroup> remainingGroups = new ArrayList<>();
-        for (DuplicateGroup group : currentGroups) {
-            List<DuplicateCandidate> remainingCandidates = new ArrayList<>();
-            for (DuplicateCandidate candidate : group.getCandidates()) {
-                if (!selected.contains(candidate)) {
-                    remainingCandidates.add(candidate);
-                }
-            }
-            if (remainingCandidates.size() > 1) {
-                remainingGroups.add(new DuplicateGroup(group.getGroupName(), remainingCandidates, group.getClassification()));
-            }
-        }
-
-        currentGroups.clear();
-        currentGroups.addAll(remainingGroups);
-        populateTreeTable(currentGroups);
+        viewModel.updateGroups(result.remainingGroups());
         updateSelectedSummary();
     }
 
-    private String formatDuration(long millis) {
-        long seconds = millis / 1000;
-        long min = seconds / 60;
-        long sec = seconds % 60;
-        return String.format("%02d:%02d", min, sec);
+    // ── Language Browser actions ──────────────────────────────────────────────
+
+    @FXML
+    void onLangSelectAll() {
+        viewModel.selectAllVisible();
     }
 
-    private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        char pre = "KMGTPE".charAt(exp - 1);
-        return String.format("%.1f %cB", bytes / Math.pow(1024, exp), pre);
+    @FXML
+    void onLangDeselectAll() {
+        viewModel.deselectAllSongs();
     }
 
-    public static class AnalyzerRowModel {
-        private final String name;
-        private final DuplicateGroup group;
-        private final DuplicateCandidate candidate;
-
-        public AnalyzerRowModel(String name, DuplicateGroup group, DuplicateCandidate candidate) {
-            this.name = name;
-            this.group = group;
-            this.candidate = candidate;
-        }
-
-        public boolean isGroup() {
-            return candidate == null;
-        }
-
-        public DuplicateCandidate getCandidate() {
-            return candidate;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getArtist() {
-            if (candidate != null) return candidate.getSongFile().getArtist();
-            return "";
-        }
-
-        public String getDurationFormatted() {
-            if (candidate != null) {
-                long durationSec = candidate.getSongFile().getDuration();
-                return String.format("%d:%02d", durationSec / 60, durationSec % 60);
+    @FXML
+    void onLangQuarantine() {
+        List<SongFile> selected = viewModel.getSelectedSongsForQuarantine();
+        if (selected.isEmpty()) {
+            if (dialogService != null) {
+                dialogService.showInfo("Sin selección", "No hay canciones seleccionadas para mover a cuarentena.");
             }
-            return "";
+            return;
         }
 
-        public String getSizeFormatted() {
-            if (candidate != null) {
-                long bytes = candidate.getSongFile().getSize();
-                if (bytes < 1024) return bytes + " B";
-                int exp = (int) (Math.log(bytes) / Math.log(1024));
-                char pre = "KMGTPE".charAt(exp - 1);
-                return String.format("%.1f %cB", bytes / Math.pow(1024, exp), pre);
+        if (songLanguageBrowserService == null) {
+            LOGGER.error("SongLanguageBrowserService not initialized");
+            return;
+        }
+
+        SongLanguageBrowserService.QuarantineResult result = songLanguageBrowserService.moveToQuarantine(selected);
+
+        if (result.moved() > 0) {
+            viewModel.removeSongsFromBrowser(selected);
+            refreshLangCount();
+        }
+
+        if (dialogService != null) {
+            if (result.failed() == 0) {
+                dialogService.showInfo("Archivos movidos",
+                        String.format("Se movieron %d canción(es) a la carpeta '.quarantine-idioma'.", result.moved()));
+            } else {
+                dialogService.showInfo("Operación parcial",
+                        String.format("Se movieron %d canción(es). %d no pudieron moverse.", result.moved(), result.failed()));
             }
-            return "";
         }
+    }
 
-        public String getType() {
-            if (candidate != null) return candidate.getSongFile().getFormat();
-            return "";
-        }
+    // ── Utilities ─────────────────────────────────────────────────────────────
 
-        public String getStatus() {
-            if (isGroup()) {
-                return group.getClassification().getDisplayName();
+    private void safeUpdate(Runnable action) {
+        Runnable wrapped = () -> {
+            try {
+                action.run();
+            } catch (Exception e) {
+                LOGGER.error("Error actualizando LibraryAnalyzer UI", e);
             }
-            return candidate.isOriginal() ? "Original" : (candidate.isSelectedForDeletion() ? "Eliminar copia" : "Conservar");
-        }
+        };
 
-        public String getPath() {
-            if (candidate != null) return candidate.getSongFile().getPath().toString();
-            return "";
+        if (Platform.isFxApplicationThread()) {
+            wrapped.run();
+        } else {
+            Platform.runLater(wrapped);
         }
+    }
+
+    @Override
+    public void close() {
+        unregisterEventSubscriptions();
+        LOGGER.info("LibraryAnalyzerController cerrado y suscripciones desvinculadas.");
     }
 }

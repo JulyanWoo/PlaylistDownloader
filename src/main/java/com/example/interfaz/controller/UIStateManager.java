@@ -22,8 +22,8 @@ public class UIStateManager {
     private final AtomicBoolean shouldStop = new AtomicBoolean(false);
 
     public UIStateManager(TextField inputField, Button addButton, Button startButton,
-                         Button pauseButton, Button cancelButton, Button clearQueueButton,
-                         Button removeSelectedButton, ListView<String> queueListView) {
+            Button pauseButton, Button cancelButton, Button clearQueueButton,
+            Button removeSelectedButton, ListView<String> queueListView) {
         this.inputField = inputField;
         this.addButton = addButton;
         this.startButton = startButton;
@@ -39,7 +39,7 @@ public class UIStateManager {
     private void initializeUI() {
         pauseButton.setVisible(false);
         cancelButton.setVisible(false);
-        pauseButton.setText("⏸ Pausar");
+        pauseButton.setText("Pausar");
     }
 
     public void updateDownloadState(boolean downloading) {
@@ -59,7 +59,7 @@ public class UIStateManager {
         queueListView.setDisable(false);
 
         if (!downloading) {
-            pauseButton.setText("⏸ Pausar");
+            pauseButton.setText("Pausar");
             isPaused.set(false);
         }
     }
@@ -69,11 +69,11 @@ public class UIStateManager {
 
         if (isDownloading.get()) {
             if (paused) {
-                pauseButton.setText("▶️ Reanudar");
+                pauseButton.setText("Reanudar");
                 inputField.setDisable(false);
                 addButton.setDisable(false);
             } else {
-                pauseButton.setText("⏸ Pausar");
+                pauseButton.setText("Pausar");
                 inputField.setDisable(true);
                 addButton.setDisable(true);
             }

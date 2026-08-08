@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox spacing="16.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+<VBox spacing="12.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.interfaz.controller.LibraryAnalyzerController">
 
     <!-- Card 1: Controles de Análisis y Progreso -->
@@ -17,10 +17,17 @@
                     <VBox spacing="2">
                         <children>
                             <Label text="Analizador de Biblioteca Musical" styleClass="card-title" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-                            <Label text="Detecta y gestiona automáticamente archivos de música duplicados usando comparación por metadatos y hash SHA-256." styleClass="card-subtitle" style="-fx-text-fill: -color-fg-muted;" />
+                            <Label text="Detecta duplicados y clasifica canciones por idioma usando comparación de metadatos y análisis lingüístico." styleClass="card-subtitle" style="-fx-text-fill: -color-fg-muted;" />
                         </children>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS" />
+                    <HBox spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 0 8 0 0;">
+                        <children>
+                            <FontIcon iconLiteral="mdi2t-translate" iconSize="16" />
+                            <Label text="Detector idioma:" styleClass="card-subtitle" style="-fx-font-weight: bold;" />
+                            <ComboBox fx:id="cmbLanguageMode" prefWidth="170" />
+                        </children>
+                    </HBox>
                     <Button fx:id="btnStartAnalysis" mnemonicParsing="false" onAction="#onStartAnalysis" text="Analizar biblioteca" styleClass="button, accent">
                         <graphic>
                             <FontIcon iconLiteral="mdi2p-play" iconSize="16" />
@@ -81,11 +88,16 @@
         </children>
     </VBox>
 
-    <!-- Card 2: Resultados TreeTableView -->
-    <VBox styleClass="card-panel" VBox.vgrow="ALWAYS" spacing="10">
-        <children>
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- Card 2: Canciones Duplicadas (desplegable)                            -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <TitledPane fx:id="duplicatesPane" text="  Canciones Duplicadas" expanded="true"
+                VBox.vgrow="SOMETIMES"
+                style="-fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-border-width: 1; -fx-background-radius: 6;">
+        <VBox spacing="10" style="-fx-padding: 10 4 4 4;">
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <children>
+                    <FontIcon iconLiteral="mdi2c-content-copy" iconSize="18" />
                     <Label text="Grupos de Canciones Duplicadas" styleClass="card-title" />
                     <Region HBox.hgrow="ALWAYS" />
                     <Button fx:id="btnKeepOriginal" mnemonicParsing="false" onAction="#onKeepOriginal" text="Conservar original" styleClass="button, sm">
@@ -106,14 +118,15 @@
                 </children>
             </HBox>
 
-            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false">
+            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false" prefHeight="300">
                 <columns>
-                    <TreeTableColumn fx:id="colSelect" prefWidth="50" resizable="false" text="☑" />
+                    <TreeTableColumn fx:id="colSelect" prefWidth="50" resizable="false" text="Sel" />
                     <TreeTableColumn fx:id="colName" prefWidth="240" text="Nombre / Grupo" />
                     <TreeTableColumn fx:id="colArtist" prefWidth="140" text="Artista" />
                     <TreeTableColumn fx:id="colDuration" prefWidth="80" text="Duración" />
                     <TreeTableColumn fx:id="colSize" prefWidth="90" text="Tamaño" />
                     <TreeTableColumn fx:id="colType" prefWidth="70" text="Tipo" />
+                    <TreeTableColumn fx:id="colLanguage" prefWidth="100" text="Idioma" />
                     <TreeTableColumn fx:id="colStatus" prefWidth="130" text="Estado" />
                     <TreeTableColumn fx:id="colPath" prefWidth="250" text="Ruta" />
                 </columns>
@@ -122,7 +135,7 @@
                 </columnResizePolicy>
             </TreeTableView>
 
-            <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 5 0 0 0;">
+            <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 0 0 2 0;">
                 <children>
                     <Label fx:id="selectedSummaryLabel" text="0 duplicados seleccionados para mover" styleClass="folder-path-text" />
                     <Button fx:id="btnMoveToTrash" mnemonicParsing="false" onAction="#onMoveToTrash" text="Mover duplicados a cuarentena" styleClass="button, danger">
@@ -132,6 +145,92 @@
                     </Button>
                 </children>
             </HBox>
-        </children>
-    </VBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- Card 3: Explorador de Idiomas (desplegable)                           -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <TitledPane fx:id="languageBrowserPane" text="  Explorador de Idiomas" expanded="false"
+                VBox.vgrow="SOMETIMES"
+                style="-fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-border-width: 1; -fx-background-radius: 6;">
+        <VBox spacing="10" style="-fx-padding: 10 4 4 4;">
+
+            <!-- Header + description -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <children>
+                    <FontIcon iconLiteral="mdi2t-translate-variant" iconSize="18" />
+                    <VBox spacing="2">
+                        <Label text="Explorador de Idiomas" styleClass="card-title" />
+                        <Label text="Visualiza, filtra y manda a cuarentena canciones según su idioma detectado." styleClass="card-subtitle" style="-fx-text-fill: -color-fg-muted;" />
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS" />
+                    <!-- Quick-select buttons -->
+                    <Button fx:id="btnLangSelectAll" mnemonicParsing="false" onAction="#onLangSelectAll" text="Seleccionar visibles" styleClass="button, sm">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-checkbox-marked" iconSize="14" />
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnLangDeselectAll" mnemonicParsing="false" onAction="#onLangDeselectAll" text="Desmarcar todo" styleClass="button, sm">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2c-checkbox-blank-outline" iconSize="14" />
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+
+            <!-- Filter bar -->
+            <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 4 0; -fx-background-color: -color-bg-subtle; -fx-background-radius: 5; -fx-padding: 8;">
+                <children>
+                    <FontIcon iconLiteral="mdi2f-filter-outline" iconSize="16" />
+                    <Label text="Idioma:" style="-fx-font-weight: bold;" />
+                    <ComboBox fx:id="cmbLangFilter" prefWidth="180" />
+                    <Separator orientation="VERTICAL" />
+                    <FontIcon iconLiteral="mdi2m-magnify" iconSize="16" />
+                    <Label text="Buscar:" style="-fx-font-weight: bold;" />
+                    <TextField fx:id="txtLangSearch" promptText="Nombre, artista..." prefWidth="220" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label fx:id="lblLangCount" text="0 canciones" style="-fx-text-fill: -color-fg-muted;" />
+                </children>
+            </HBox>
+
+            <!-- Language Browser TableView -->
+            <TableView fx:id="langBrowserTable" VBox.vgrow="ALWAYS" prefHeight="310"
+                       style="-fx-selection-bar: -color-accent-subtle;">
+                <columns>
+                    <TableColumn fx:id="colLangSelect" prefWidth="50" resizable="false" text="Sel" />
+                    <TableColumn fx:id="colLangName" prefWidth="240" text="Nombre" />
+                    <TableColumn fx:id="colLangArtist" prefWidth="150" text="Artista" />
+                    <TableColumn fx:id="colLangLang" prefWidth="140" text="Idioma detectado" />
+                    <TableColumn fx:id="colLangConf" prefWidth="90" text="Confianza" />
+                    <TableColumn fx:id="colLangFormat" prefWidth="70" text="Formato" />
+                    <TableColumn fx:id="colLangSize" prefWidth="90" text="Tamaño" />
+                    <TableColumn fx:id="colLangPath" prefWidth="260" text="Ruta" />
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+                <placeholder>
+                    <VBox alignment="CENTER" spacing="8">
+                        <FontIcon iconLiteral="mdi2t-translate" iconSize="36" style="-fx-icon-color: -color-fg-muted;" />
+                        <Label text="Ejecuta &quot;Analizar biblioteca&quot; para detectar el idioma de tus canciones." style="-fx-text-fill: -color-fg-muted;" />
+                    </VBox>
+                </placeholder>
+            </TableView>
+
+            <!-- Footer: summary + quarantine button -->
+            <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 0 0 2 0;">
+                <children>
+                    <Label fx:id="lblLangBrowserSummary" text="0 canciones seleccionadas" styleClass="folder-path-text" />
+                    <Button fx:id="btnLangQuarantine" mnemonicParsing="false" onAction="#onLangQuarantine"
+                            text="Mover seleccionadas a cuarentena" styleClass="button, danger">
+                        <graphic>
+                            <FontIcon iconLiteral="mdi2d-delete-sweep" iconSize="16" />
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
 </VBox>

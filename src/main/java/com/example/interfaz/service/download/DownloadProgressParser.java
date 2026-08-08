@@ -1,11 +1,11 @@
 package com.example.interfaz.service.download;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DownloadProgressParser {
 
@@ -15,12 +15,19 @@ public class DownloadProgressParser {
     private final Map<String, BiConsumer<String, ProgressListener>> handlers = new HashMap<>();
 
     public interface ProgressListener {
+
         void onOverallProgress(int current, int total);
+
         void onSongStart(String songTitle);
+
         void onCurrentProgress(double progress, String statusText);
+
         void onSpeedUpdate(String speed);
+
         void onEtaUpdate(String eta);
+
         void onStatusUpdate(String statusMessage);
+
         void onGenericMessage(String message);
     }
 
@@ -49,10 +56,14 @@ public class DownloadProgressParser {
 
     public void parseAndDispatch(String message, ProgressListener customListener) {
         ProgressListener target = customListener != null ? customListener : this.listener;
-        if (message == null || target == null) return;
+        if (message == null || target == null) {
+            return;
+        }
 
         String trimmed = message.trim();
-        if (trimmed.isEmpty()) return;
+        if (trimmed.isEmpty()) {
+            return;
+        }
 
         for (Map.Entry<String, BiConsumer<String, ProgressListener>> entry : handlers.entrySet()) {
             String prefix = entry.getKey();
@@ -113,14 +124,14 @@ public class DownloadProgressParser {
     }
 
     private boolean isIgnoredLogLine(String message) {
-        return message.startsWith("DOWNLOAD_START:") ||
-               message.contains("[youtube:tab]") ||
-               message.contains("[youtube]") ||
-               message.contains("[download]") ||
-               message.startsWith("Iniciando descarga") ||
-               message.contains("Downloading item") ||
-               message.contains("API JSON") ||
-               message.contains("player API") ||
-               message.contains("ios player");
+        return message.startsWith("DOWNLOAD_START:")
+                || message.contains("[youtube:tab]")
+                || message.contains("[youtube]")
+                || message.contains("[download]")
+                || message.startsWith("Iniciando descarga")
+                || message.contains("Downloading item")
+                || message.contains("API JSON")
+                || message.contains("player API")
+                || message.contains("ios player");
     }
 }

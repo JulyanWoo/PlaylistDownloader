@@ -8,11 +8,11 @@ public class TitleNormalizer {
         }
 
         return title.toLowerCase()
-                   .replaceAll("[\\[\\](){}]", "")
-                   .replaceAll("\\s*(official|video|lyrics|audio|hd|4k|music|mv|clip)\\s*", "")
-                   .replaceAll("[^a-z0-9\\s]", "")
-                   .replaceAll("\\s+", " ")
-                   .trim();
+                .replaceAll("[\\[\\](){}]", "")
+                .replaceAll("\\s*(official|video|lyrics|audio|hd|4k|music|mv|clip)\\s*", "")
+                .replaceAll("[^a-z0-9\\s]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     public static String[] normalize(String... titles) {

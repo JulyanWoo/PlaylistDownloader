@@ -1,8 +1,5 @@
 package com.example.interfaz.service;
 
-import com.example.interfaz.model.LogEntry;
-import com.example.interfaz.model.LogEntry.LogLevel;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -12,7 +9,11 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import com.example.interfaz.model.LogEntry;
+import com.example.interfaz.model.LogEntry.LogLevel;
+
 public final class LogService {
+
     private static LogService instance;
     private final Deque<LogEntry> logs;
     private final PrintStream originalOut;

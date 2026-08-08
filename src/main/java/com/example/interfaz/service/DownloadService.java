@@ -1,7 +1,8 @@
 package com.example.interfaz.service;
 
-import com.example.interfaz.model.Song;
 import java.util.concurrent.CompletableFuture;
+
+import com.example.interfaz.model.Song;
 
 public interface DownloadService extends AutoCloseable {
 
@@ -10,7 +11,8 @@ public interface DownloadService extends AutoCloseable {
      *
      * @param url target media URL
      * @param outputPath target directory or empty for default
-     * @return CompletableFuture completing with true on success or completing exceptionally on error
+     * @return CompletableFuture completing with true on success or completing
+     * exceptionally on error
      */
     CompletableFuture<Boolean> downloadSong(String url, String outputPath);
 

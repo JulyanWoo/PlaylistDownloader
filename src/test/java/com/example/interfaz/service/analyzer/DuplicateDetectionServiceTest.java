@@ -20,6 +20,7 @@ class DuplicateDetectionServiceTest {
     private DuplicateDetectionService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new DuplicateDetectionService();
     }

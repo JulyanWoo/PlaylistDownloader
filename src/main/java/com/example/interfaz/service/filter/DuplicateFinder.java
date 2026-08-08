@@ -39,7 +39,7 @@ public class DuplicateFinder {
             String normalizedExisting = TitleNormalizer.normalize(existingTitle);
 
             if (SimilarityCalculator.calculateCombinedSimilarity(normalizedTitle, normalizedExisting) >= similarityThreshold) {
-                LOGGER.info(() ->"Similitud detectada: '" + title + "' es similar a '" + existingTitle + "'");
+                LOGGER.info(() -> "Similitud detectada: '" + title + "' es similar a '" + existingTitle + "'");
                 return true;
             }
         }

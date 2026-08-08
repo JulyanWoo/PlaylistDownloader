@@ -10,6 +10,7 @@ class SongNameNormalizerTest {
     private SongNameNormalizer normalizer;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         normalizer = new SongNameNormalizer();
     }

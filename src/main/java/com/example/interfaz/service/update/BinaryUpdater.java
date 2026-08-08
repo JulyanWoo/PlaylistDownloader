@@ -2,6 +2,7 @@ package com.example.interfaz.service.update;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -61,7 +62,7 @@ public class BinaryUpdater {
             notify(logCallback, "Descargando nuevo binario desde GitHub...");
             boolean downloaded = downloadFile(downloadUrl, newFile);
             if (!downloaded || !Files.exists(newFile) || Files.size(newFile) == 0) {
-                notify(logCallback, "❌ Falló la descarga del nuevo binario.");
+                notify(logCallback, "Falló la descarga del nuevo binario.");
                 cleanUpQuietly(newFile);
                 return false;
             }
@@ -70,7 +71,7 @@ public class BinaryUpdater {
                 notify(logCallback, "Verificando suma de comprobación SHA-256...");
                 boolean hashOk = hashValidator.verifyFileHash(newFile, sha256SumsUrl);
                 if (!hashOk) {
-                    notify(logCallback, "❌ La suma de comprobación SHA-256 no coincide. Se cancela el reemplazo.");
+                    notify(logCallback, "La suma de comprobación SHA-256 no coincide. Se cancela el reemplazo.");
                     cleanUpQuietly(newFile);
                     return false;
                 }
@@ -79,7 +80,7 @@ public class BinaryUpdater {
             notify(logCallback, "Validando ejecutable descargado...");
             boolean valid = validateBinary(newFile);
             if (!valid) {
-                notify(logCallback, "❌ El ejecutable descargado no superó la prueba de validación (--version).");
+                notify(logCallback, "El ejecutable descargado no superó la prueba de validación (--version).");
                 cleanUpQuietly(newFile);
                 return false;
             }
@@ -92,11 +93,11 @@ public class BinaryUpdater {
             try {
                 Files.move(newFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
                 cleanUpQuietly(backupFile);
-                notify(logCallback, "✓ Binario actualizado y reemplazado con éxito.");
+                notify(logCallback, "Binario actualizado y reemplazado con éxito.");
                 return true;
-            } catch (Exception e) {
+            } catch (IOException e) {
                 LOGGER.error("Error reemplazando el binario, restaurando copia de seguridad...", e);
-                notify(logCallback, "⚠️ Falló el reemplazo final, restaurando copia de seguridad...");
+                notify(logCallback, "Falló el reemplazo final, restaurando copia de seguridad...");
                 if (Files.exists(backupFile)) {
                     Files.move(backupFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
                 }
@@ -104,9 +105,9 @@ public class BinaryUpdater {
                 return false;
             }
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error("Error durante la actualización del binario", e);
-            notify(logCallback, "❌ Error de actualización: " + e.getMessage());
+            notify(logCallback, "Error de actualización: " + e.getMessage());
             cleanUpQuietly(newFile);
             return false;
         }
@@ -127,7 +128,7 @@ public class BinaryUpdater {
                 int exitCode = process.waitFor();
                 return exitCode == 0 && line != null && !line.isBlank();
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             LOGGER.warn("Error validando el binario {}: {}", binaryPath, e.getMessage());
             return false;
         }
@@ -151,7 +152,7 @@ public class BinaryUpdater {
             } else {
                 LOGGER.warn("Error al descargar archivo desde GitHub. HTTP status: {}", response.statusCode());
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             LOGGER.error("Excepción durante descarga de binario", e);
         }
         return false;
@@ -169,7 +170,7 @@ public class BinaryUpdater {
             if (file != null) {
                 Files.deleteIfExists(file);
             }
-        } catch (Exception ignored) {
+        } catch (IOException ignored) {
         }
     }
 

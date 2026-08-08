@@ -1,5 +1,6 @@
 package com.example.interfaz.service.update;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -60,7 +61,7 @@ public class ReleaseChecker {
             } else {
                 LOGGER.warn("Respuesta inesperada al consultar lanzamientos de GitHub: HTTP {}", response.statusCode());
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             LOGGER.warn("No se pudo comprobar actualización en GitHub: {}", e.getMessage());
         }
 

@@ -21,12 +21,14 @@ public abstract class DownloadEvent {
     }
 
     public static class DownloadStarted extends DownloadEvent {
+
         public DownloadStarted(Song song) {
             super(song);
         }
     }
 
     public static class DownloadCompleted extends DownloadEvent {
+
         private final String filePath;
 
         public DownloadCompleted(Song song, String filePath) {
@@ -40,6 +42,7 @@ public abstract class DownloadEvent {
     }
 
     public static class DownloadFailed extends DownloadEvent {
+
         private final String error;
 
         public DownloadFailed(Song song, String error) {
@@ -53,6 +56,7 @@ public abstract class DownloadEvent {
     }
 
     public static class DownloadProgress extends DownloadEvent {
+
         private final double progress;
         private final String status;
 
@@ -72,6 +76,7 @@ public abstract class DownloadEvent {
     }
 
     public static class StateChanged extends DownloadEvent {
+
         private final boolean isDownloading;
         private final boolean isPaused;
 
@@ -91,12 +96,14 @@ public abstract class DownloadEvent {
     }
 
     public static class QueueEmpty extends DownloadEvent {
+
         public QueueEmpty() {
             super(null);
         }
     }
 
     public static class QueueUpdated extends DownloadEvent {
+
         public QueueUpdated() {
             super(null);
         }

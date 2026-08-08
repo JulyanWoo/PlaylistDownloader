@@ -6,8 +6,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parses yt-dlp stdout lines and forwards structured progress events.
- * Does NOT register song titles, write to any file, or maintain history.
+ * Parses yt-dlp stdout lines and forwards structured progress events. Does NOT
+ * register song titles, write to any file, or maintain history.
  */
 public class ProgressReporter {
 
@@ -15,7 +15,8 @@ public class ProgressReporter {
 
     private Consumer<String> progressCallback;
 
-    public ProgressReporter() {}
+    public ProgressReporter() {
+    }
 
     public void setProgressCallback(Consumer<String> callback) {
         this.progressCallback = callback;
@@ -27,9 +28,13 @@ public class ProgressReporter {
         }
     }
 
-    /** Processes one line of yt-dlp output and fires the appropriate event. */
+    /**
+     * Processes one line of yt-dlp output and fires the appropriate event.
+     */
     public void processDownloadLine(String line) {
-        if (line == null || line.trim().isEmpty()) return;
+        if (line == null || line.trim().isEmpty()) {
+            return;
+        }
 
         try {
             if (line.contains("[download] Downloading item")) {

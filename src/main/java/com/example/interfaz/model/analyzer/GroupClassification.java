@@ -2,6 +2,7 @@ package com.example.interfaz.model.analyzer;
 
 public enum GroupClassification {
     CONFIRMED_DUPLICATE("Duplicado confirmado"),
+    VERSION_VARIANT("Variante de versión"),
     POSSIBLE_DUPLICATE("Posible duplicado"),
     SIMILAR_FILES("Archivos similares");
 
