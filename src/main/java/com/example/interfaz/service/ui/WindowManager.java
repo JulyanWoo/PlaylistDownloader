@@ -2,6 +2,7 @@ package com.example.interfaz.service.ui;
 
 import java.io.IOException;
 
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,8 +10,10 @@ import com.example.interfaz.controller.LogsController;
 import com.example.interfaz.service.LogService;
 
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -18,10 +21,12 @@ public class WindowManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WindowManager.class);
     private final DialogService dialogService;
+    private final WindowStageDecorator stageDecorator;
     private Stage primaryStage;
 
     public WindowManager(DialogService dialogService) {
         this.dialogService = dialogService;
+        this.stageDecorator = new WindowStageDecorator();
     }
 
     public WindowManager() {
@@ -34,6 +39,39 @@ public class WindowManager {
 
     public Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    public WindowStageDecorator getStageDecorator() {
+        return stageDecorator;
+    }
+
+    public void initCustomStage(Stage stage, HBox customTitleBar, Node rootNode, FontIcon iconMaximize) {
+        setPrimaryStage(stage);
+        if (stageDecorator != null) {
+            stageDecorator.attach(stage, customTitleBar, rootNode, iconMaximize);
+        }
+    }
+
+    public void minimize() {
+        if (stageDecorator != null) {
+            stageDecorator.minimize();
+        } else if (primaryStage != null) {
+            primaryStage.setIconified(true);
+        }
+    }
+
+    public void toggleMaximize() {
+        if (stageDecorator != null) {
+            stageDecorator.toggleMaximize();
+        }
+    }
+
+    public void closeWindow() {
+        if (stageDecorator != null) {
+            stageDecorator.closeWindow();
+        } else if (primaryStage != null) {
+            primaryStage.fireEvent(new javafx.stage.WindowEvent(primaryStage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST));
+        }
     }
 
     public void showLogsWindow(Stage ownerStage) {
@@ -71,3 +109,4 @@ public class WindowManager {
         }
     }
 }
+
