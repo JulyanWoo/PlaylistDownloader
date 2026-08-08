@@ -171,8 +171,12 @@ public class LibraryAnalyzerService implements AutoCloseable {
                     duplicateDetectionService.getLanguageDetectorMode());
             for (SongFile song : processedSongs) {
                 if (cancelled.get() || Thread.currentThread().isInterrupted()) break;
-                String text = buildLangText(song);
-                LanguageDetectorService.LanguageDetectionResult lr = langDetector.detectLanguage(text);
+                LanguageDetectorService.LanguageDetectionResult lr;
+                if ((song.getTitle() != null && !song.getTitle().isBlank()) || (song.getArtist() != null && !song.getArtist().isBlank())) {
+                    lr = langDetector.detectLanguageForTrack(song.getTitle(), song.getArtist());
+                } else {
+                    lr = langDetector.detectLanguage(song.getFileName());
+                }
                 song.setLanguageInfo(new LanguageInfo(lr.languageCode(), lr.languageName(),
                         lr.confidence(), System.currentTimeMillis()));
             }
@@ -218,6 +222,7 @@ public class LibraryAnalyzerService implements AutoCloseable {
     }
 
     /** Builds text for language detection, falling back to filename when tags are absent. */
+    @SuppressWarnings("unused")
     private String buildLangText(SongFile s) {
         String artist = s.getArtist();
         String title = s.getTitle();
