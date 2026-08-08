@@ -458,6 +458,7 @@
 
 .welcome-container {
   -fx-background-color: transparent;
+  background-color: transparent;
   -fx-alignment: center;
 }
 
@@ -523,6 +524,7 @@
 
 .quick-chips-container {
   -fx-padding: 8 0 0 0;
+  padding: 8px 0 0 0;
 }
 
 .quick-chip-btn {
@@ -646,6 +648,16 @@
 .tree-table-row-cell.analyzer-deletion-row .tree-table-cell {
   -fx-text-fill: #f87171;
   color: #f87171;
+}
+
+.titled-pane:expanded {
+  -fx-max-height: 1.7976931348623157E308;
+  max-height: 100%;
+}
+
+.titled-pane:expanded > .content {
+  -fx-max-height: 1.7976931348623157E308;
+  max-height: 100%;
 }
 
 

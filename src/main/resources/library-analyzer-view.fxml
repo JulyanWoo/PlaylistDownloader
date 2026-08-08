@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox spacing="12.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+<VBox spacing="12.0" style="-fx-padding: 0;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.interfaz.controller.LibraryAnalyzerController">
 
     <!-- Card 1: Controles de Análisis y Progreso -->
@@ -92,9 +92,9 @@
     <!-- Card 2: Canciones Duplicadas (desplegable)                            -->
     <!-- ══════════════════════════════════════════════════════════════════════ -->
     <TitledPane fx:id="duplicatesPane" text="  Canciones Duplicadas" expanded="true"
-                VBox.vgrow="SOMETIMES"
+                VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308"
                 style="-fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-border-width: 1; -fx-background-radius: 6;">
-        <VBox spacing="10" style="-fx-padding: 10 4 4 4;">
+        <VBox spacing="10" style="-fx-padding: 10 4 4 4;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <children>
                     <FontIcon iconLiteral="mdi2c-content-copy" iconSize="18" />
@@ -118,7 +118,7 @@
                 </children>
             </HBox>
 
-            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false" prefHeight="300">
+            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false" maxHeight="1.7976931348623157E308">
                 <columns>
                     <TreeTableColumn fx:id="colSelect" prefWidth="50" resizable="false" text="Sel" />
                     <TreeTableColumn fx:id="colName" prefWidth="240" text="Nombre / Grupo" />
@@ -152,9 +152,9 @@
     <!-- Card 3: Explorador de Idiomas (desplegable)                           -->
     <!-- ══════════════════════════════════════════════════════════════════════ -->
     <TitledPane fx:id="languageBrowserPane" text="  Explorador de Idiomas" expanded="false"
-                VBox.vgrow="SOMETIMES"
+                VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308"
                 style="-fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-border-width: 1; -fx-background-radius: 6;">
-        <VBox spacing="10" style="-fx-padding: 10 4 4 4;">
+        <VBox spacing="10" style="-fx-padding: 10 4 4 4;" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
 
             <!-- Header + description -->
             <HBox spacing="10" alignment="CENTER_LEFT">
@@ -195,7 +195,7 @@
             </HBox>
 
             <!-- Language Browser TableView -->
-            <TableView fx:id="langBrowserTable" VBox.vgrow="ALWAYS" prefHeight="310"
+            <TableView fx:id="langBrowserTable" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308"
                        style="-fx-selection-bar: -color-accent-subtle;">
                 <columns>
                     <TableColumn fx:id="colLangSelect" prefWidth="50" resizable="false" text="Sel" />

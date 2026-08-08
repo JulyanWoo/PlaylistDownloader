@@ -21,6 +21,8 @@ import javafx.collections.ListChangeListener;
 import javafx.scene.control.Label;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.TreeTableView;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 public class LibraryAnalyzerPresenter implements AutoCloseable {
 
@@ -61,6 +63,20 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
         this.resultsTreeTable = controls.resultsTreeTable();
         this.languageBrowserPane = controls.languageBrowserPane();
         this.lblLangCount = controls.lblLangCount();
+
+        if (duplicatesPane != null) {
+            duplicatesPane.expandedProperty().addListener((obs, oldVal, isExpanded) -> {
+                VBox.setVgrow(duplicatesPane, isExpanded ? Priority.ALWAYS : Priority.NEVER);
+            });
+            VBox.setVgrow(duplicatesPane, duplicatesPane.isExpanded() ? Priority.ALWAYS : Priority.NEVER);
+        }
+
+        if (languageBrowserPane != null) {
+            languageBrowserPane.expandedProperty().addListener((obs, oldVal, isExpanded) -> {
+                VBox.setVgrow(languageBrowserPane, isExpanded ? Priority.ALWAYS : Priority.NEVER);
+            });
+            VBox.setVgrow(languageBrowserPane, languageBrowserPane.isExpanded() ? Priority.ALWAYS : Priority.NEVER);
+        }
 
         if (viewBinder != null) {
             viewBinder.bind(
