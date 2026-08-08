@@ -39,7 +39,10 @@ public class ServiceFactory {
     private FolderChooserService folderChooserService;
     private MusicFolderService musicFolderService;
     private DownloadProgressParser downloadProgressParser;
-
+    private com.example.interfaz.service.ui.UIFacade uiFacade;
+    private com.example.interfaz.viewmodel.MainViewModel mainViewModel;
+    private com.example.interfaz.service.download.MainDownloadFacade mainDownloadFacade;
+    private com.example.interfaz.service.analyzer.LibraryAnalyzerFacade libraryAnalyzerFacade;
     private SongNameNormalizer songNameNormalizer;
     private SongMetadataReader songMetadataReader;
     private DuplicateDetectionService duplicateDetectionService;
@@ -132,6 +135,38 @@ public class ServiceFactory {
         return downloadProgressParser;
     }
 
+    public com.example.interfaz.service.ui.UIFacade getUIFacade() {
+        if (uiFacade == null) {
+            uiFacade = new com.example.interfaz.service.ui.UIFacade(
+                    getDialogService(),
+                    getNavigationService(),
+                    getThemeService(),
+                    getFolderChooserService(),
+                    getWindowManager()
+            );
+        }
+        return uiFacade;
+    }
+
+    public com.example.interfaz.viewmodel.MainViewModel getMainViewModel() {
+        if (mainViewModel == null) {
+            mainViewModel = new com.example.interfaz.viewmodel.MainViewModel();
+        }
+        return mainViewModel;
+    }
+
+    public com.example.interfaz.service.download.MainDownloadFacade getMainDownloadFacade() {
+        if (mainDownloadFacade == null) {
+            mainDownloadFacade = new com.example.interfaz.service.download.MainDownloadFacade(
+                    getDownloadService(),
+                    getDownloadProgressParser(),
+                    getYtDlpUpdateService(),
+                    getEventPublisher()
+            );
+        }
+        return mainDownloadFacade;
+    }
+
     private QueueManager queueManager;
 
     public synchronized QueueManager getQueueManager() {
@@ -202,11 +237,45 @@ public class ServiceFactory {
         return duplicateManagementService;
     }
 
+    private com.example.interfaz.service.ui.analyzer.LanguageBrowserTableConfigurator languageBrowserTableConfigurator;
+    private com.example.interfaz.service.ui.analyzer.LibraryAnalyzerViewBinder libraryAnalyzerViewBinder;
+    private com.example.interfaz.service.ui.analyzer.LibraryAnalyzerPresenter libraryAnalyzerPresenter;
+
     public com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator getAnalyzerTableConfigurator() {
         if (analyzerTableConfigurator == null) {
             analyzerTableConfigurator = new com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator();
         }
         return analyzerTableConfigurator;
+    }
+
+    public com.example.interfaz.service.ui.analyzer.LanguageBrowserTableConfigurator getLanguageBrowserTableConfigurator() {
+        if (languageBrowserTableConfigurator == null) {
+            languageBrowserTableConfigurator = new com.example.interfaz.service.ui.analyzer.LanguageBrowserTableConfigurator();
+        }
+        return languageBrowserTableConfigurator;
+    }
+
+    public com.example.interfaz.service.ui.analyzer.LibraryAnalyzerViewBinder getLibraryAnalyzerViewBinder() {
+        if (libraryAnalyzerViewBinder == null) {
+            libraryAnalyzerViewBinder = new com.example.interfaz.service.ui.analyzer.LibraryAnalyzerViewBinder();
+        }
+        return libraryAnalyzerViewBinder;
+    }
+
+    public com.example.interfaz.service.ui.analyzer.LibraryAnalyzerPresenter getLibraryAnalyzerPresenter(
+            com.example.interfaz.viewmodel.LibraryAnalyzerViewModel viewModel
+    ) {
+        if (libraryAnalyzerPresenter == null) {
+            libraryAnalyzerPresenter = new com.example.interfaz.service.ui.analyzer.LibraryAnalyzerPresenter(
+                    getLibraryAnalyzerFacade(),
+                    viewModel,
+                    getLibraryAnalyzerViewBinder(),
+                    getAnalyzerTableConfigurator(),
+                    getLanguageBrowserTableConfigurator(),
+                    getDialogService()
+            );
+        }
+        return libraryAnalyzerPresenter;
     }
 
     public com.example.interfaz.service.analyzer.SongLanguageBrowserService getSongLanguageBrowserService() {
@@ -228,7 +297,42 @@ public class ServiceFactory {
         return libraryAnalyzerService;
     }
 
+    public com.example.interfaz.service.analyzer.LibraryAnalyzerFacade getLibraryAnalyzerFacade() {
+        if (libraryAnalyzerFacade == null) {
+            libraryAnalyzerFacade = new com.example.interfaz.service.analyzer.LibraryAnalyzerFacade(
+                    getLibraryAnalyzerService(),
+                    getDuplicateSelectionService(),
+                    getDuplicateManagementService(),
+                    getSongLanguageBrowserService(),
+                    getEventPublisher()
+            );
+        }
+        return libraryAnalyzerFacade;
+    }
+
     public synchronized void shutdown() {
+        if (mainDownloadFacade != null) {
+            try {
+                mainDownloadFacade.close();
+                LOGGER.info("MainDownloadFacade cerrado correctamente en ServiceFactory.shutdown()");
+            } catch (Exception e) {
+                LOGGER.error("Error al cerrar MainDownloadFacade en shutdown", e);
+            } finally {
+                mainDownloadFacade = null;
+            }
+        }
+
+        if (libraryAnalyzerFacade != null) {
+            try {
+                libraryAnalyzerFacade.close();
+                LOGGER.info("LibraryAnalyzerFacade cerrado correctamente en ServiceFactory.shutdown()");
+            } catch (Exception e) {
+                LOGGER.error("Error al cerrar LibraryAnalyzerFacade en shutdown", e);
+            } finally {
+                libraryAnalyzerFacade = null;
+            }
+        }
+
         if (libraryAnalyzerService != null) {
             try {
                 libraryAnalyzerService.close();
@@ -269,6 +373,8 @@ public class ServiceFactory {
         dialogService = null;
         windowManager = null;
         folderChooserService = null;
+        uiFacade = null;
+        mainViewModel = null;
         musicFolderService = null;
         downloadProgressParser = null;
         songNameNormalizer = null;
@@ -279,6 +385,8 @@ public class ServiceFactory {
         duplicateSelectionService = null;
         duplicateManagementService = null;
         analyzerTableConfigurator = null;
+        languageBrowserTableConfigurator = null;
+        libraryAnalyzerViewBinder = null;
         songLanguageBrowserService = null;
     }
 

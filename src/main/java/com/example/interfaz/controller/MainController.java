@@ -6,318 +6,77 @@ import org.slf4j.LoggerFactory;
 
 import com.example.interfaz.event.DownloadEvent;
 import com.example.interfaz.factory.ServiceFactory;
-import com.example.interfaz.service.DownloadService;
-import com.example.interfaz.service.YouTubeDownloadService;
-import com.example.interfaz.service.download.DownloadCoordinator;
-import com.example.interfaz.service.download.DownloadProgressParser;
-import com.example.interfaz.service.ui.DialogService;
-import com.example.interfaz.service.ui.FolderChooserService;
-import com.example.interfaz.service.ui.NavigationService;
-import com.example.interfaz.service.ui.ThemeService;
-import com.example.interfaz.service.ui.WindowManager;
+import com.example.interfaz.service.download.MainDownloadFacade;
+import com.example.interfaz.service.ui.UIFacade;
+import com.example.interfaz.viewmodel.MainViewModel;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
 @SuppressWarnings({"unused", "FXML"})
-public class MainController {
+public class MainController implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
 
-    // Views automatically included by FXMLLoader via <fx:include>
-    @FXML
-    VBox queueView;
-    @FXML
-    QueueController queueViewController;
+    @FXML private BorderPane rootNode;
 
-    @FXML
-    VBox progressView;
-    @FXML
-    ProgressController progressViewController;
+    @FXML private Button btnNavQueue;
+    @FXML private Button btnNavDownloads;
+    @FXML private Button btnNavLogs;
+    @FXML private Button btnNavAnalyzer;
 
-    @FXML
-    VBox logsSection;
+    @FXML private Label musicFolderLabel;
+    @FXML private Button selectFolderButton;
+    @FXML private Button resetFolderButton;
 
-    @FXML
-    VBox libraryAnalyzerView;
+    @FXML private Label ytDlpVersionLabel;
+    @FXML private Label ytDlpStatusLabel;
+    @FXML private Button updateYtDlpButton;
 
-    // Header and sidebar components
-    @FXML
-    FontIcon themeIcon;
-    @FXML
-    Button btnNavQueue;
-    @FXML
-    Button btnNavDownloads;
-    @FXML
-    Button btnNavLogs;
-    @FXML
-    Button btnNavAnalyzer;
-    @FXML
-    TextField inputField;
-    @FXML
-    Label musicFolderLabel;
-    @FXML
-    Label ytDlpStatusLabel;
-    @FXML
-    Label ytDlpVersionLabel;
-    @FXML
-    Button updateYtDlpButton;
+    @FXML private Button themeToggleButton;
+    @FXML private FontIcon themeIcon;
 
-    // Services injected from ServiceFactory
-    private NavigationService navigationService;
-    private ThemeService themeService;
-    private DialogService dialogService;
-    private WindowManager windowManager;
-    private FolderChooserService folderChooserService;
-    private DownloadProgressParser progressParser;
-    private com.example.interfaz.service.download.YtDlpUpdateService ytDlpUpdateService;
-    private com.example.interfaz.service.update.UpdateInfo lastUpdateInfo;
+    @FXML private TextField inputField;
+    @FXML private Button addButton;
+    @FXML private Button startButton;
 
-    private DownloadCoordinator downloadCoordinator;
-    private DownloadService downloadService;
+    @FXML private Node queueView;
+    @FXML private Node progressView;
+    @FXML private Node logsSection;
+    @FXML private Node libraryAnalyzerView;
+
+    @FXML private QueueController queueViewController;
+    @FXML private ProgressController progressViewController;
+
+    private UIFacade uiFacade;
+    private MainViewModel mainViewModel;
+    private MainDownloadFacade downloadFacade;
     private Stage primaryStage;
 
     @FXML
-    void initialize() {
-        try {
-            ServiceFactory serviceFactory = ServiceFactory.getInstance();
-            injectServices(serviceFactory);
+    public void initialize() {
+        ServiceFactory factory = ServiceFactory.getInstance();
+        this.uiFacade = factory.getUIFacade();
+        this.mainViewModel = factory.getMainViewModel();
+        this.downloadFacade = factory.getMainDownloadFacade();
 
-            if (downloadService instanceof YouTubeDownloadService ytService) {
-                ytService.setProgressCallback(progressParser::parseAndDispatch);
-            }
+        setupFolderManager();
+        setupYtDlpUpdater();
+        setupDownloadFacade();
 
-            initializeCoordinator(serviceFactory);
-            setupEventSubscriptions(serviceFactory);
-
-            if (progressViewController != null) {
-                progressParser.setListener(progressViewController);
-                progressViewController.setPauseAction(downloadCoordinator::pauseDownload);
-                progressViewController.setResumeAction(downloadCoordinator::resumeDownload);
-                progressViewController.setCancelAction(() -> {
-                    downloadCoordinator.cancelDownload();
-                    progressViewController.markDownloadCancelled();
-                    progressViewController.togglePauseResumeButtons(false);
-                    if (queueViewController != null) {
-                        queueViewController.setControlsEnabled(true);
-                    }
-                });
-            }
-
-            if (musicFolderLabel != null) {
-                musicFolderLabel.setText(folderChooserService.getDisplayPath());
-            }
-            loadYtDlpVersion();
-            LOGGER.info("MainController ultra-delgado e impulsado por eventos inicializado correctamente");
-        } catch (Exception e) {
-            LOGGER.error("Error inicializando MainController", e);
-        }
+        LOGGER.info("MainController inicializado.");
     }
 
-    private void loadYtDlpVersion() {
-        if (ytDlpUpdateService != null) {
-            ytDlpUpdateService.checkUpdateAsync().thenAccept(info -> Platform.runLater(() -> {
-                this.lastUpdateInfo = info;
-                if (ytDlpVersionLabel != null) {
-                    ytDlpVersionLabel.setText("Ver: " + info.getCurrentVersion());
-                }
-                if (info.isUpdateAvailable()) {
-                    if (ytDlpStatusLabel != null) {
-                        ytDlpStatusLabel.setText("Estado: Nueva v" + info.getLatestVersion());
-                    }
-                    if (updateYtDlpButton != null) {
-                        updateYtDlpButton.setText("Actualizar ahora");
-                    }
-                } else {
-                    if (ytDlpStatusLabel != null) {
-                        ytDlpStatusLabel.setText("Estado: Al día");
-                    }
-                    if (updateYtDlpButton != null) {
-                        updateYtDlpButton.setText("Buscar actualización");
-                    }
-                }
-            }));
-        }
-    }
-
-    private void injectServices(ServiceFactory serviceFactory) {
-        this.downloadService = serviceFactory.getDownloadService();
-        this.navigationService = serviceFactory.getNavigationService();
-        this.themeService = serviceFactory.getThemeService();
-        this.dialogService = serviceFactory.getDialogService();
-        this.windowManager = serviceFactory.getWindowManager();
-        this.folderChooserService = serviceFactory.getFolderChooserService();
-        this.progressParser = serviceFactory.getDownloadProgressParser();
-        this.ytDlpUpdateService = serviceFactory.getYtDlpUpdateService();
-    }
-
-    private void initializeCoordinator(ServiceFactory serviceFactory) {
-        this.downloadCoordinator = new DownloadCoordinator(
-                downloadService,
-                queueViewController.getQueueManager(),
-                serviceFactory.getEventPublisher());
-        serviceFactory.registerDownloadCoordinator(downloadCoordinator);
-
-        if (ytDlpUpdateService != null) {
-            ytDlpUpdateService.setActiveDownloadChecker(downloadCoordinator::isDownloading);
-        }
-    }
-
-    private void setupEventSubscriptions(ServiceFactory serviceFactory) {
-        var eventPublisher = serviceFactory.getEventPublisher();
-        if (eventPublisher != null) {
-            eventPublisher.subscribe(DownloadEvent.StateChanged.class, event -> Platform.runLater(() -> {
-                if (queueViewController != null) {
-                    queueViewController.setControlsEnabled(!event.isDownloading());
-                }
-                if (progressViewController != null) {
-                    progressViewController.togglePauseResumeButtons(event.isPaused());
-                }
-                if (!event.isDownloading() && progressViewController != null && downloadCoordinator.isQueueEmpty()) {
-                    progressViewController.markDownloadCompleted();
-                    progressViewController.togglePauseResumeButtons(false);
-                }
-            }));
-
-            eventPublisher.subscribe(DownloadEvent.QueueEmpty.class, event -> Platform.runLater(
-                    () -> dialogService.showInfo("Cola vacía", "Agrega URLs a la cola antes de iniciar la descarga.")));
-
-            eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, event -> Platform.runLater(() -> {
-                if (progressViewController != null && event.getSong() != null) {
-                    progressViewController.updateStatus("✅ " + event.getSong().getTitle() + " completado");
-                }
-            }));
-        }
-    }
-
-    // Delegaciones @FXML puras y directas
-    @FXML
-    void onAddToQueue() {
-        if (inputField != null) {
-            String url = inputField.getText();
-            if (downloadCoordinator.addToQueue(url)) {
-                inputField.clear();
-            } else {
-                dialogService.showError("URL no válida", "La URL ingresada no es válida o ya se encuentra en la cola.");
-            }
-        }
-    }
-
-    @FXML
-    void onNavQueue() {
-        navigationService.navigateTo(btnNavQueue, queueView, progressView, logsSection);
-    }
-
-    @FXML
-    void onNavDownloads() {
-        navigationService.navigateTo(btnNavDownloads, progressView, queueView, logsSection);
-    }
-
-    @FXML
-    void onNavLogs() {
-        navigationService.navigateTo(btnNavLogs, logsSection, queueView, progressView, libraryAnalyzerView);
-    }
-
-    @FXML
-    void onNavAnalyzer() {
-        navigationService.navigateTo(btnNavAnalyzer, libraryAnalyzerView, queueView, progressView, logsSection);
-    }
-
-    @FXML
-    void onStartDownload() {
-        onNavDownloads();
-        if (progressViewController != null) {
-            progressViewController.showProgressSection();
-            progressViewController.updateStatus("🚀 Iniciando descarga...");
-            progressViewController.togglePauseResumeButtons(false);
-        }
-        downloadCoordinator.startDownload();
-    }
-
-    @FXML
-    private void onResumeClick() {
-        downloadCoordinator.resume();
-        if (progressViewController != null) {
-            progressViewController.togglePauseResumeButtons(false);
-        }
-    }
-
-    @FXML
-    void onToggleTheme() {
-        themeService.toggleTheme(themeIcon);
-    }
-
-    @FXML
-    void onShowLogs() {
-        windowManager.showLogsWindow(primaryStage);
-    }
-
-    @FXML
-    void onSelectMusicFolder() {
-        String newPath = folderChooserService.promptAndSelectFolder(primaryStage);
-        if (musicFolderLabel != null) {
-            musicFolderLabel.setText(newPath);
-        }
-    }
-
-    @FXML
-    void onResetMusicFolder() {
-        String newPath = folderChooserService.resetToDefaultFolder();
-        if (musicFolderLabel != null) {
-            musicFolderLabel.setText(newPath);
-        }
-    }
-
-    @FXML
-    void onUpdateYtDlp() {
-        if (downloadCoordinator != null && downloadCoordinator.isDownloading()) {
-            dialogService.showWarning("Descarga en curso", "No se puede actualizar yt-dlp mientras existen descargas activas en curso.");
-            return;
-        }
-
-        if (updateYtDlpButton != null) {
-            updateYtDlpButton.setDisable(true);
-        }
-        if (ytDlpStatusLabel != null) {
-            ytDlpStatusLabel.setText("Estado: Procesando...");
-        }
-
-        if (lastUpdateInfo != null && lastUpdateInfo.isUpdateAvailable()) {
-            ytDlpUpdateService.updateYtDlpAsync(logLine -> LOGGER.info("[yt-dlp update UI] {}", logLine))
-                    .thenAccept(success -> Platform.runLater(() -> {
-                if (updateYtDlpButton != null) {
-                    updateYtDlpButton.setDisable(false);
-                }
-                loadYtDlpVersion();
-                if (success) {
-                    dialogService.showConfirmation(
-                            "Actualización completada",
-                            "yt-dlp se ha actualizado correctamente.",
-                            "¿Deseas reiniciar la aplicación ahora para asegurar el uso del nuevo ejecutable?",
-                            Platform::exit
-                    );
-                } else {
-                    dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
-                }
-            }));
-        } else {
-            ytDlpUpdateService.checkUpdateAsync(true).thenAccept(info -> Platform.runLater(() -> {
-                this.lastUpdateInfo = info;
-                if (updateYtDlpButton != null) {
-                    updateYtDlpButton.setDisable(false);
-                }
-                loadYtDlpVersion();
-                if (info.isUpdateAvailable()) {
-                    dialogService.showInfo("Actualización disponible", "Nueva versión disponible: " + info.getLatestVersion() + ".\nHaz clic en 'Actualizar ahora' para continuar.");
-                } else {
-                    dialogService.showInfo("yt-dlp al día", "Ya cuentas con la versión más reciente de yt-dlp (" + info.getCurrentVersion() + ").");
-                }
-            }));
+    public void setStage(Stage stage) {
+        this.primaryStage = stage;
+        if (uiFacade != null && uiFacade.getWindowManager() != null) {
+            uiFacade.getWindowManager().setPrimaryStage(stage);
         }
     }
 
@@ -329,7 +88,147 @@ public class MainController {
         return progressViewController;
     }
 
-    public void setStage(Stage stage) {
-        this.primaryStage = stage;
+    private void setupFolderManager() {
+        var musicFolderService = ServiceFactory.getInstance().getMusicFolderService();
+
+        mainViewModel.musicFolderDisplayPathProperty().addListener((obs, oldVal, newVal) -> {
+            if (musicFolderLabel != null) musicFolderLabel.setText(newVal);
+        });
+
+        mainViewModel.updateMusicFolderDisplay(musicFolderService.getMusicFolderPath());
+    }
+
+    private void setupYtDlpUpdater() {
+        if (ytDlpVersionLabel != null) {
+            ytDlpVersionLabel.textProperty().bind(mainViewModel.ytDlpVersionTextProperty());
+        }
+        if (ytDlpStatusLabel != null) {
+            ytDlpStatusLabel.textProperty().bind(mainViewModel.ytDlpStatusTextProperty());
+        }
+        if (updateYtDlpButton != null) {
+            updateYtDlpButton.textProperty().bind(mainViewModel.updateButtonTextProperty());
+            updateYtDlpButton.disableProperty().bind(mainViewModel.updateButtonDisabledProperty());
+        }
+    }
+
+    private void setupDownloadFacade() {
+        downloadFacade.initialize(queueViewController, progressViewController, () -> {
+            LOGGER.info("Cola de descargas vacía.");
+        });
+
+        downloadFacade.subscribeToEvents(
+                this::onDownloadQueued,
+                this::onDownloadStarted,
+                this::onDownloadProgress,
+                this::onDownloadCompleted,
+                this::onDownloadError
+        );
+    }
+
+    @FXML
+    void onAddToQueue() {
+        if (inputField == null) return;
+        String url = inputField.getText().trim();
+        if (url.isEmpty()) {
+            uiFacade.getDialogService().showWarning("URL Vacía", "Por favor introduce una URL válida de YouTube.");
+            return;
+        }
+
+        boolean success = downloadFacade.addToQueue(url);
+        if (success) {
+            inputField.clear();
+        } else {
+            uiFacade.getDialogService().showError("Error al encolar", "No se pudo encolar la descarga. Verifica la URL o la configuración.");
+        }
+    }
+
+    @FXML
+    void onNavQueue() {
+        uiFacade.getNavigationService().navigateTo(btnNavQueue, queueView, progressView, logsSection, libraryAnalyzerView);
+    }
+
+    @FXML
+    void onNavDownloads() {
+        uiFacade.getNavigationService().navigateTo(btnNavDownloads, progressView, queueView, logsSection, libraryAnalyzerView);
+    }
+
+    @FXML
+    void onNavLogs() {
+        uiFacade.getNavigationService().navigateTo(btnNavLogs, logsSection, queueView, progressView, libraryAnalyzerView);
+    }
+
+    @FXML
+    void onNavAnalyzer() {
+        uiFacade.getNavigationService().navigateTo(btnNavAnalyzer, libraryAnalyzerView, queueView, progressView, logsSection);
+    }
+
+    @FXML
+    void onStartDownload() {
+        onNavDownloads();
+        if (progressViewController != null) {
+            progressViewController.showProgressSection();
+            progressViewController.updateStatus("🚀 Iniciando descarga...");
+            progressViewController.togglePauseResumeButtons(false);
+        }
+        downloadFacade.startNextDownload();
+    }
+
+    @FXML
+    void onToggleTheme() {
+        uiFacade.getThemeService().toggleTheme(themeIcon);
+    }
+
+    @FXML
+    void onSelectMusicFolder() {
+        String newPath = uiFacade.getFolderChooserService().promptAndSelectFolder(primaryStage);
+        if (musicFolderLabel != null) {
+            musicFolderLabel.setText(newPath);
+        }
+        mainViewModel.updateMusicFolderDisplay(newPath);
+    }
+
+    @FXML
+    void onResetMusicFolder() {
+        String newPath = uiFacade.getFolderChooserService().resetToDefaultFolder();
+        if (musicFolderLabel != null) {
+            musicFolderLabel.setText(newPath);
+        }
+        mainViewModel.updateMusicFolderDisplay(newPath);
+    }
+
+    @FXML
+    void onUpdateYtDlp() {
+        var updateService = ServiceFactory.getInstance().getYtDlpUpdateService();
+        mainViewModel.checkAndPerformYtDlpUpdate(updateService, uiFacade.getDialogService());
+    }
+
+    private void onDownloadQueued(DownloadEvent.DownloadStarted event) {
+        LOGGER.info("Evento capturado: Descarga encolada [{}]", event.getSong() != null ? event.getSong().getTitle() : "");
+    }
+
+    private void onDownloadStarted(DownloadEvent.DownloadStarted event) {
+        LOGGER.info("Evento capturado: Descarga iniciada [{}]", event.getSong() != null ? event.getSong().getTitle() : "");
+    }
+
+    private void onDownloadProgress(DownloadEvent.DownloadProgress event) {
+    }
+
+    private void onDownloadCompleted(DownloadEvent.DownloadCompleted event) {
+        LOGGER.info("Evento capturado: Descarga completada [{}]", event.getSong() != null ? event.getSong().getTitle() : "");
+    }
+
+    private void onDownloadError(DownloadEvent.DownloadFailed event) {
+        LOGGER.error("Evento capturado: Error en descarga [{}] - {}", event.getSong() != null ? event.getSong().getTitle() : "", event.getError());
+        Platform.runLater(() -> uiFacade.getDialogService().showError("Error de Descarga",
+                "Ocurrió un error al descargar '" + (event.getSong() != null ? event.getSong().getTitle() : "") + "': " + event.getError()));
+    }
+
+    @Override
+    public void close() {
+        if (downloadFacade != null) {
+            downloadFacade.unsubscribeFromEvents();
+            downloadFacade.close();
+        }
+        LOGGER.info("MainController liberado.");
     }
 }
