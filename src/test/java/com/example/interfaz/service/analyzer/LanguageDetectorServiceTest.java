@@ -48,6 +48,35 @@ class LanguageDetectorServiceTest {
     }
 
     @Test
+    void testDiacriticsPreFilter() {
+        LanguageDetectorService.LanguageDetectionResult esRes = service.detectLanguage("¿Dónde estás, niña?");
+        assertEquals("es", esRes.languageCode());
+
+        LanguageDetectorService.LanguageDetectionResult frRes = service.detectLanguage("Garçon et française à la plage");
+        assertEquals("fr", frRes.languageCode());
+
+        LanguageDetectorService.LanguageDetectionResult ptRes = service.detectLanguage("Canção do coração e não da razão");
+        assertEquals("pt", ptRes.languageCode());
+    }
+
+    @Test
+    void testSeparateTitleArtistWeighting() {
+        // "Yeison Jimenez" as artist should not override a clear Spanish title "El Último Adiós"
+        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguageForTrack("El Último Adiós", "Yeison Jimenez");
+        assertEquals("es", res.languageCode());
+        assertTrue(res.confidence() >= 0.50);
+    }
+
+    @Test
+    void testBigramsAndMorphology() {
+        LanguageDetectorService.LanguageDetectionResult esRes = service.detectLanguage("Llorar Quiero");
+        assertEquals("es", esRes.languageCode());
+
+        LanguageDetectorService.LanguageDetectionResult enRes = service.detectLanguage("Thinking Somewhere");
+        assertEquals("en", enRes.languageCode());
+    }
+
+    @Test
     void testAggressivenessModes() {
         String testTitle = "Ahora Resulta";
 
@@ -68,7 +97,6 @@ class LanguageDetectorServiceTest {
 
     @Test
     void testFilenameBasedDetection() {
-        // Simulates filenames when MP3 tags are absent (empty title/artist)
         LanguageDetectorService.LanguageDetectionResult r1 = service.detectLanguage("KAROL G, Nicki Minaj - Tusa (Official Video).mp3");
         assertEquals("es", r1.languageCode(), "Tusa should be detected as Spanish from filename");
 
