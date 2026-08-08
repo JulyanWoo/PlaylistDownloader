@@ -13,7 +13,6 @@ import java.io.IOException;
 public class Main extends Application {
 
     private static final String MAIN_VIEW_FXML = "/main-view.fxml";
-    private static final String APP_TITLE = "Playlist Downloader";
     private static final int WINDOW_WIDTH = 920;
     private static final int WINDOW_HEIGHT = 650;
 
@@ -33,7 +32,8 @@ public class Main extends Application {
                 controller.setStage(stage);
             }
 
-            stage.setTitle(APP_TITLE);
+            stage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+            stage.setTitle("");
             try {
                 stage.getIcons().add(new javafx.scene.image.Image(Main.class.getResourceAsStream("/app.png")));
             } catch (Exception e) {
