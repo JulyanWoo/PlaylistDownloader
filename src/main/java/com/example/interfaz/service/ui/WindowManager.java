@@ -1,21 +1,24 @@
 package com.example.interfaz.service.ui;
 
+import java.io.IOException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.example.interfaz.controller.LogsController;
 import com.example.interfaz.service.LogService;
+
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class WindowManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WindowManager.class);
     private final DialogService dialogService;
+    private Stage primaryStage;
 
     public WindowManager(DialogService dialogService) {
         this.dialogService = dialogService;
@@ -23,6 +26,14 @@ public class WindowManager {
 
     public WindowManager() {
         this(new DialogService());
+    }
+
+    public void setPrimaryStage(Stage stage) {
+        this.primaryStage = stage;
+    }
+
+    public Stage getPrimaryStage() {
+        return primaryStage;
     }
 
     public void showLogsWindow(Stage ownerStage) {
@@ -37,6 +48,8 @@ public class WindowManager {
             logsStage.initModality(Modality.NONE);
             if (ownerStage != null) {
                 logsStage.initOwner(ownerStage);
+            } else if (primaryStage != null) {
+                logsStage.initOwner(primaryStage);
             }
 
             Scene scene = new Scene(root);

@@ -1,10 +1,12 @@
 package com.example.interfaz.service.ui;
 
+import java.io.File;
+
 import com.example.interfaz.service.config.MusicFolderService;
+
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-
-import java.io.File;
+import javafx.stage.Window;
 
 public class FolderChooserService {
 
@@ -18,6 +20,17 @@ public class FolderChooserService {
 
     public FolderChooserService() {
         this(new MusicFolderService(), new DialogService());
+    }
+
+    public File selectFolder(Window owner, String title, File initialDirectory) {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        if (title != null) {
+            directoryChooser.setTitle(title);
+        }
+        if (initialDirectory != null && initialDirectory.exists()) {
+            directoryChooser.setInitialDirectory(initialDirectory);
+        }
+        return directoryChooser.showDialog(owner);
     }
 
     public String promptAndSelectFolder(Stage stage) {

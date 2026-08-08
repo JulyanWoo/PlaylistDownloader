@@ -13,21 +13,25 @@ public class ThemeService {
 
     private boolean isDarkMode = true;
 
-    public void toggleTheme(FontIcon themeIcon) {
-        isDarkMode = !isDarkMode;
+    public void applySavedTheme() {
         if (isDarkMode) {
             Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
-            if (themeIcon != null) {
-                themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
-            }
-            LOGGER.info("Cambiado a Modo Oscuro (Primer Dark)");
         } else {
             Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
-            if (themeIcon != null) {
-                themeIcon.setIconLiteral("mdi2w-weather-sunny");
-            }
-            LOGGER.info("Cambiado a Modo Claro (Primer Light)");
         }
+    }
+
+    public void toggleTheme() {
+        toggleTheme(null);
+    }
+
+    public void toggleTheme(FontIcon themeIcon) {
+        isDarkMode = !isDarkMode;
+        applySavedTheme();
+        if (themeIcon != null) {
+            themeIcon.setIconLiteral(isDarkMode ? "mdi2m-moon-waning-crescent" : "mdi2w-weather-sunny");
+        }
+        LOGGER.info("Cambiado a Modo {}", isDarkMode ? "Oscuro (Primer Dark)" : "Claro (Primer Light)");
     }
 
     public boolean isDarkMode() {

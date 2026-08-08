@@ -15,6 +15,14 @@ public class MusicFolderService {
         return FileUtils.getMusicDirectory();
     }
 
+    public String getMusicFolderPath() {
+        return getCurrentMusicFolder();
+    }
+
+    public File getMusicFolder() {
+        return new File(getCurrentMusicFolder());
+    }
+
     public String setMusicFolder(String newPath) {
         if (newPath == null || newPath.trim().isEmpty()) {
             return getCurrentMusicFolder();
@@ -25,6 +33,10 @@ public class MusicFolderService {
         ConfigurationManager.getInstance().saveConfiguration();
         LOGGER.info("Carpeta de música actualizada a: {}", cleanPath);
         return cleanPath;
+    }
+
+    public void setMusicFolderPath(String newPath) {
+        setMusicFolder(newPath);
     }
 
     public String resetToDefaultMusicFolder() {
