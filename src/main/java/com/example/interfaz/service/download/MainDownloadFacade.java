@@ -97,7 +97,7 @@ public class MainDownloadFacade implements AutoCloseable {
                 if (progressController != null) {
                     progressController.showProgressSection();
                     if (event.getSong() != null) {
-                        progressController.updateCurrentSong(event.getSong().getTitle());
+                        progressController.updateCurrentSong(event.getSong().getTitle(), event.getSong().getUrl());
                     }
                 }
             }));
@@ -156,6 +156,7 @@ public class MainDownloadFacade implements AutoCloseable {
         this.errorHandler = onError;
 
         if (eventPublisher != null) {
+            eventPublisher.subscribe(DownloadEvent.DownloadStarted.class, this::handleQueued);
             eventPublisher.subscribe(DownloadEvent.DownloadStarted.class, this::handleStarted);
             eventPublisher.subscribe(DownloadEvent.DownloadProgress.class, this::handleProgress);
             eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, this::handleCompleted);
@@ -165,16 +166,24 @@ public class MainDownloadFacade implements AutoCloseable {
 
     public void unsubscribeFromEvents() {
         if (eventPublisher != null) {
+            eventPublisher.unsubscribe(DownloadEvent.DownloadStarted.class, this::handleQueued);
             eventPublisher.unsubscribe(DownloadEvent.DownloadStarted.class, this::handleStarted);
             eventPublisher.unsubscribe(DownloadEvent.DownloadProgress.class, this::handleProgress);
             eventPublisher.unsubscribe(DownloadEvent.DownloadCompleted.class, this::handleCompleted);
             eventPublisher.unsubscribe(DownloadEvent.DownloadFailed.class, this::handleError);
         }
+        this.queuedHandler = null;
+        this.startedHandler = null;
+        this.progressHandler = null;
+        this.completedHandler = null;
+        this.errorHandler = null;
     }
 
+    private void handleQueued(DownloadEvent.DownloadStarted e) {
+        if (queuedHandler != null) queuedHandler.onQueued(e);
+    }
     private void handleStarted(DownloadEvent.DownloadStarted e) {
         if (startedHandler != null) startedHandler.onStarted(e);
-        if (queuedHandler != null) queuedHandler.onQueued(e);
     }
     private void handleProgress(DownloadEvent.DownloadProgress e) { if (progressHandler != null) progressHandler.onProgress(e); }
     private void handleCompleted(DownloadEvent.DownloadCompleted e) { if (completedHandler != null) completedHandler.onCompleted(e); }

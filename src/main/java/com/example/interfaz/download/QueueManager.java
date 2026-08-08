@@ -12,6 +12,7 @@ public class QueueManager {
     private final Queue<String> downloadQueue;
     private final Set<String> queuedUrls;
     private final Set<String> processingUrls;
+    private final Set<String> prioritizedUrls;
     private int totalDownloads;
     private int processedItems;
     private int failedItems;
@@ -20,6 +21,7 @@ public class QueueManager {
         this.downloadQueue = new LinkedList<>();
         this.queuedUrls = new HashSet<>();
         this.processingUrls = new HashSet<>();
+        this.prioritizedUrls = new HashSet<>();
         this.totalDownloads = 0;
         this.processedItems = 0;
         this.failedItems = 0;
@@ -48,6 +50,33 @@ public class QueueManager {
             processingUrls.add(url);
         }
         return url;
+    }
+
+    public synchronized boolean prioritize(String url) {
+        if (url == null) {
+            return false;
+        }
+        String trimmedUrl = url.trim();
+        prioritizedUrls.add(trimmedUrl);
+        if (queuedUrls.contains(trimmedUrl)) {
+            downloadQueue.remove(trimmedUrl);
+            ((LinkedList<String>) downloadQueue).addFirst(trimmedUrl);
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized boolean isPrioritized(String url) {
+        if (url == null) {
+            return false;
+        }
+        return prioritizedUrls.contains(url.trim());
+    }
+
+    public synchronized void removePriority(String url) {
+        if (url != null) {
+            prioritizedUrls.remove(url.trim());
+        }
     }
 
     public synchronized boolean removeFromQueue(String url) {
@@ -93,6 +122,7 @@ public class QueueManager {
     public synchronized void clearQueue() {
         downloadQueue.clear();
         queuedUrls.clear();
+        prioritizedUrls.clear();
         totalDownloads = processingUrls.size() + processedItems + failedItems;
     }
 
@@ -100,6 +130,7 @@ public class QueueManager {
         downloadQueue.clear();
         queuedUrls.clear();
         processingUrls.clear();
+        prioritizedUrls.clear();
         totalDownloads = 0;
         processedItems = 0;
         failedItems = 0;

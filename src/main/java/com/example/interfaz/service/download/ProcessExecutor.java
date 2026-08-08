@@ -76,6 +76,7 @@ public class ProcessExecutor implements AutoCloseable {
             LOGGER.info("[DIAG] Executing command: {}", String.join(" ", cmd));
 
             ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
             pb.redirectErrorStream(true);
 
             process = pb.start();

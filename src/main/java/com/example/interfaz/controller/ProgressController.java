@@ -5,11 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import com.example.interfaz.service.download.DownloadProgressParser;
 
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.VBox;
 
 @SuppressWarnings({"unused", "FXML"})
@@ -17,150 +14,123 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgressController.class);
 
-    @FXML
-    private VBox progressSection;
-    @FXML
-    private Label currentSongLabel;
-    @FXML
-    private Label overallProgressLabel;
-    @FXML
-    private Label overallPercentageLabel;
-    @FXML
-    private ProgressBar overallProgressBar;
-    @FXML
-    private Label currentProgressLabel;
-    @FXML
-    private Label currentPercentageLabel;
-    @FXML
-    private ProgressBar currentProgressBar;
-    @FXML
-    private Label downloadSpeedLabel;
-    @FXML
-    private Button pauseButton;
-    @FXML
-    private Button resumeButton;
-    @FXML
-    private Button cancelButton;
+    @FXML private VBox progressSection;
+    @FXML private Button pauseButton;
+    @FXML private Button resumeButton;
+    @FXML private Button cancelButton;
+    @FXML private Button clearQueueButton;
+    @FXML private Button clearCompletedButton;
 
-    private int totalItems = 0;
-    private int currentItem = 0;
-    private int downloadedCount = 0;
+    @FXML private Button filterTabAll;
+    @FXML private Button filterTabDownloading;
+    @FXML private Button filterTabWaiting;
+    @FXML private Button filterTabCompleted;
 
-    private Runnable pauseAction;
-    private Runnable resumeAction;
-    private Runnable cancelAction;
+    @FXML private VBox activeDownloadsContainer;
+    @FXML private VBox waitingDownloadsContainer;
+    @FXML private VBox completedDownloadsContainer;
+
+    private final ProgressManager progressManager = new ProgressManager();
+
+    public ProgressController() {
+    }
 
     public void setPauseAction(Runnable pauseAction) {
-        this.pauseAction = pauseAction;
+        progressManager.setPauseAction(pauseAction);
     }
 
     public void setResumeAction(Runnable resumeAction) {
-        this.resumeAction = resumeAction;
+        progressManager.setResumeAction(resumeAction);
     }
 
     public void setCancelAction(Runnable cancelAction) {
-        this.cancelAction = cancelAction;
+        progressManager.setCancelAction(cancelAction);
     }
 
     @FXML
-    private void handlePauseDownload() {
-        if (pauseAction != null) {
-            pauseAction.run();
-        }
-        togglePauseResumeButtons(true);
-    }
-
-    @FXML
-    private void handleResumeDownload() {
-        if (resumeAction != null) {
-            resumeAction.run();
-        }
-        togglePauseResumeButtons(false);
-    }
-
-    @FXML
-    private void handleCancelDownload() {
-        if (cancelAction != null) {
-            cancelAction.run();
-        }
-    }
-
-    public void togglePauseResumeButtons(boolean isPaused) {
-        Platform.runLater(() -> {
-            if (pauseButton != null) {
-                pauseButton.setVisible(!isPaused);
-                pauseButton.setManaged(!isPaused);
-            }
-            if (resumeButton != null) {
-                resumeButton.setVisible(isPaused);
-                resumeButton.setManaged(isPaused);
-            }
-        });
-    }
-
-    public void setComponents(VBox progressSection, Label currentSongLabel,
-            Label overallProgressLabel, Label overallPercentageLabel, ProgressBar overallProgressBar,
-            Label currentProgressLabel, Label currentPercentageLabel, ProgressBar currentProgressBar) {
-        this.progressSection = progressSection;
-        this.currentSongLabel = currentSongLabel;
-        this.overallProgressLabel = overallProgressLabel;
-        this.overallPercentageLabel = overallPercentageLabel;
-        this.overallProgressBar = overallProgressBar;
-        this.currentProgressLabel = currentProgressLabel;
-        this.currentPercentageLabel = currentPercentageLabel;
-        this.currentProgressBar = currentProgressBar;
+    public void initialize() {
+        progressManager.bindViews(
+                progressSection,
+                pauseButton,
+                resumeButton,
+                activeDownloadsContainer,
+                waitingDownloadsContainer,
+                completedDownloadsContainer
+        );
+        LOGGER.info("ProgressController inicializado correctamente con tarjetas interactivas");
     }
 
     public void initialize(MainController mainController) {
-        resetProgress();
-        hideProgressSection();
-        LOGGER.info("ProgressController inicializado correctamente con FXML nativo");
+        initialize();
     }
 
     public VBox getProgressSection() {
         return progressSection;
     }
 
-    public ProgressBar getCurrentProgressBar() {
-        return currentProgressBar;
-    }
-
-    public ProgressBar getOverallProgressBar() {
-        return overallProgressBar;
-    }
-
-    public Label getCurrentProgressLabel() {
-        return currentProgressLabel;
-    }
-
-    public Label getOverallProgressLabel() {
-        return overallProgressLabel;
-    }
-
-    public Label getCurrentPercentageLabel() {
-        return currentPercentageLabel;
-    }
-
-    public Label getOverallPercentageLabel() {
-        return overallPercentageLabel;
-    }
-
     public void showProgressSection() {
-        Platform.runLater(() -> {
-            if (progressSection != null) {
-                progressSection.setVisible(true);
-                progressSection.setManaged(true);
-            }
-        });
+        progressManager.showProgressSection();
     }
 
     public void hideProgressSection() {
-        Platform.runLater(() -> {
-            if (progressSection != null) {
-                progressSection.setVisible(false);
-                progressSection.setManaged(false);
-            }
-        });
+        progressManager.hideProgressSection();
+    }
+
+    @FXML
+    private void handlePauseDownload() {
+        progressManager.handlePauseDownload();
+    }
+
+    @FXML
+    private void handleResumeDownload() {
+        progressManager.handleResumeDownload();
+    }
+
+    @FXML
+    private void handleCancelDownload() {
+        progressManager.handleCancelDownload();
+    }
+
+    @FXML
+    private void handleClearQueue() {
+        progressManager.handleClearQueue();
+    }
+
+    @FXML
+    private void handleClearCompleted() {
+        progressManager.handleClearCompleted();
+    }
+
+    @FXML
+    void onFilterTabAll() {
+        progressManager.setActiveTab(filterTabAll, getFilterTabs());
+        progressManager.showContainers(true, true, true);
+    }
+
+    @FXML
+    void onFilterTabDownloading() {
+        progressManager.setActiveTab(filterTabDownloading, getFilterTabs());
+        progressManager.showContainers(true, false, false);
+    }
+
+    @FXML
+    void onFilterTabWaiting() {
+        progressManager.setActiveTab(filterTabWaiting, getFilterTabs());
+        progressManager.showContainers(false, true, false);
+    }
+
+    @FXML
+    void onFilterTabCompleted() {
+        progressManager.setActiveTab(filterTabCompleted, getFilterTabs());
+        progressManager.showContainers(false, false, true);
+    }
+
+    private Button[] getFilterTabs() {
+        return new Button[]{filterTabAll, filterTabDownloading, filterTabWaiting, filterTabCompleted};
+    }
+
+    public void togglePauseResumeButtons(boolean isPaused) {
+        progressManager.togglePauseResumeButtons(isPaused);
     }
 
     @Override
@@ -169,17 +139,7 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateCurrentProgress(double progress, String details) {
-        Platform.runLater(() -> {
-            if (currentProgressBar != null) {
-                currentProgressBar.setProgress(progress);
-            }
-            if (currentPercentageLabel != null) {
-                currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
-            }
-            if (currentProgressLabel != null) {
-                currentProgressLabel.setText(details);
-            }
-        });
+        progressManager.updateCurrentProgress(progress, details);
     }
 
     @Override
@@ -188,20 +148,7 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateOverallProgress(int currentItem, int totalItems) {
-        Platform.runLater(() -> {
-            this.currentItem = currentItem;
-            this.totalItems = totalItems;
-            if (overallProgressLabel != null) {
-                overallProgressLabel.setText("📋 Progreso de la Playlist:");
-            }
-            if (totalItems > 0 && overallProgressBar != null) {
-                double progress = (double) currentItem / totalItems;
-                overallProgressBar.setProgress(progress);
-                if (overallPercentageLabel != null) {
-                    overallPercentageLabel.setText(String.format("%d/%d", currentItem, totalItems));
-                }
-            }
-        });
+        progressManager.updateOverallProgress(currentItem, totalItems);
     }
 
     @Override
@@ -210,11 +157,11 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateCurrentSong(String songInfo) {
-        Platform.runLater(() -> {
-            if (currentSongLabel != null) {
-                currentSongLabel.setText("Descargando: " + songInfo);
-            }
-        });
+        updateCurrentSong(songInfo, songInfo);
+    }
+
+    public void updateCurrentSong(String songInfo, String urlOrTitle) {
+        progressManager.updateCurrentSong(songInfo, urlOrTitle);
     }
 
     @Override
@@ -223,11 +170,7 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateDownloadSpeed(String speed) {
-        Platform.runLater(() -> {
-            if (downloadSpeedLabel != null) {
-                downloadSpeedLabel.setText(speed);
-            }
-        });
+        progressManager.updateDownloadSpeed(speed);
     }
 
     @Override
@@ -236,7 +179,7 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateETA(String eta) {
-        LOGGER.debug("ETA actualizado: {}", eta);
+        progressManager.updateETA(eta);
     }
 
     @Override
@@ -245,7 +188,7 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     }
 
     public void updateStatus(String status) {
-        LOGGER.debug("Estado actualizado: {}", status);
+        progressManager.updateStatus(status);
     }
 
     @Override
@@ -253,56 +196,39 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
         handleProgressUpdate(message);
     }
 
+    public void addWaitingCard(String title, String subtitle) {
+        addWaitingCard(title, subtitle, title);
+    }
+
+    public void addWaitingCard(String title, String subtitle, String urlOrTitle) {
+        progressManager.addWaitingCard(title, subtitle, urlOrTitle);
+    }
+
+    public void addCompletedCard(String title) {
+        addCompletedCard(title, title);
+    }
+
+    public void addCompletedCard(String title, String urlOrTitle) {
+        progressManager.addCompletedCard(title, urlOrTitle);
+    }
+
     public void resetProgress() {
-        Platform.runLater(() -> {
-            if (currentProgressBar != null) {
-                currentProgressBar.setProgress(0);
-            }
-            if (overallProgressBar != null) {
-                overallProgressBar.setProgress(0);
-            }
-            if (currentPercentageLabel != null) {
-                currentPercentageLabel.setText("0.0%");
-            }
-            if (overallPercentageLabel != null) {
-                overallPercentageLabel.setText("0/0");
-            }
-            if (currentSongLabel != null) {
-                currentSongLabel.setText("Esperando descarga...");
-            }
-            totalItems = 0;
-            currentItem = 0;
-            downloadedCount = 0;
-        });
+        progressManager.resetProgress();
     }
 
     public void markDownloadCompleted() {
-        Platform.runLater(() -> {
-            updateStatus("✅ Descarga completada");
-            if (currentProgressLabel != null) {
-                currentProgressLabel.setText("Todas las descargas completadas");
-            }
-            if (overallProgressBar != null) {
-                overallProgressBar.setProgress(1.0);
-            }
-            if (overallPercentageLabel != null) {
-                overallPercentageLabel.setText("100.0%");
-            }
-        });
+        progressManager.markDownloadCompleted();
     }
 
     public void markDownloadPaused() {
-        Platform.runLater(() -> updateStatus("Descarga pausada"));
+        progressManager.markDownloadPaused();
     }
 
     public void markDownloadCancelled() {
-        Platform.runLater(() -> {
-            updateStatus("Descarga cancelada");
-            hideProgressSection();
-        });
+        progressManager.markDownloadCancelled();
     }
 
     public void handleProgressUpdate(String message) {
-        updateStatus(message);
+        progressManager.updateStatus(message);
     }
 }

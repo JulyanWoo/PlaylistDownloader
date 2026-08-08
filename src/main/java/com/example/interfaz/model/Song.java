@@ -10,6 +10,7 @@ public class Song {
     private String fileName;
     private String filePath;
     private String url;
+    private String thumbnailUrl;
     private long fileSize;
     private LocalDateTime downloadDate;
     private boolean isDownloaded;
@@ -73,6 +74,14 @@ public class Song {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     public long getFileSize() {

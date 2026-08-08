@@ -6,63 +6,105 @@
 
 <VBox fx:id="progressSection" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.interfaz.controller.ProgressController"
-      spacing="12.0" styleClass="card-panel" visible="false" managed="false" VBox.vgrow="ALWAYS">
+      spacing="16.0" VBox.vgrow="ALWAYS">
    <children>
-      <HBox alignment="CENTER_LEFT" spacing="12.0">
+      <!-- Cabecera de Gestión de Descargas y Acciones Globales -->
+      <HBox alignment="CENTER_LEFT" spacing="10.0">
          <children>
-            <FontIcon iconLiteral="mdi2p-progress-download" iconSize="18" />
-            <Label text="Progreso de Descargas en Curso" styleClass="card-title" />
-            <Label fx:id="downloadSpeedLabel" text="0.0 MB/s" styleClass="speed-badge" />
+            <Label text="Gestión de Descargas" styleClass="section-header-title" style="-fx-font-size: 18px;" />
             <Region HBox.hgrow="ALWAYS" />
-            <Button fx:id="pauseButton" mnemonicParsing="false" onAction="#handlePauseDownload" text="Pausar" styleClass="button, warning">
+            <Button fx:id="pauseButton" mnemonicParsing="false" onAction="#handlePauseDownload" text=" Pausar Todo" styleClass="btn-dark-subtle">
                <graphic>
                   <FontIcon iconLiteral="mdi2p-pause" iconSize="14" />
                </graphic>
             </Button>
-            <Button fx:id="resumeButton" mnemonicParsing="false" onAction="#handleResumeDownload" text="Reanudar" styleClass="button, success" visible="false" managed="false">
+            <Button fx:id="resumeButton" mnemonicParsing="false" onAction="#handleResumeDownload" text=" Reanudar Todo" styleClass="btn-dark-subtle" visible="false" managed="false">
                <graphic>
                   <FontIcon iconLiteral="mdi2p-play" iconSize="14" />
                </graphic>
             </Button>
-            <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#handleCancelDownload" text="Cancelar" styleClass="button, danger">
+            <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#handleCancelDownload" text=" Cancelar Descarga" styleClass="btn-dark-subtle">
                <graphic>
-                  <FontIcon iconLiteral="mdi2c-close-circle" iconSize="14" />
+                  <Label text="✕" style="-fx-text-fill: #ef4444; -fx-font-size: 14px; -fx-font-weight: bold;" />
+               </graphic>
+            </Button>
+            <Button fx:id="clearQueueButton" mnemonicParsing="false" onAction="#handleClearQueue" text=" Limpiar Cola" styleClass="btn-dark-subtle">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2d-delete-sweep" iconSize="14" />
+               </graphic>
+            </Button>
+            <Button fx:id="clearCompletedButton" mnemonicParsing="false" onAction="#handleClearCompleted" text=" Limpiar Completados" styleClass="btn-dark-subtle">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2c-check" iconSize="14" />
                </graphic>
             </Button>
          </children>
       </HBox>
 
-      <!-- Tarjeta de Progreso de Playlist/Lista -->
-      <VBox styleClass="progress-card">
+      <!-- Pestañas de Filtro Rápido -->
+      <HBox styleClass="filter-tabs-container">
          <children>
-            <HBox alignment="CENTER_LEFT">
-               <children>
-                  <Label fx:id="overallProgressLabel" text="Progreso General de Playlist" styleClass="card-subtitle" />
-                  <Region HBox.hgrow="ALWAYS" />
-                  <Label fx:id="overallPercentageLabel" text="0%" styleClass="card-title" />
-               </children>
-            </HBox>
-            <ProgressBar fx:id="overallProgressBar" progress="0.0" maxWidth="Infinity" styleClass="progress-bar, accent" prefHeight="10.0" />
+            <Button fx:id="filterTabAll" mnemonicParsing="false" onAction="#onFilterTabAll" text="Todo" styleClass="filter-tab-btn, active" />
+            <Button fx:id="filterTabDownloading" mnemonicParsing="false" onAction="#onFilterTabDownloading" text="Descargando" styleClass="filter-tab-btn" />
+            <Button fx:id="filterTabWaiting" mnemonicParsing="false" onAction="#onFilterTabWaiting" text="En Espera" styleClass="filter-tab-btn" />
+            <Button fx:id="filterTabCompleted" mnemonicParsing="false" onAction="#onFilterTabCompleted" text="Completado" styleClass="filter-tab-btn" />
          </children>
-      </VBox>
+      </HBox>
 
-      <!-- Tarjeta de Canción Actual -->
-      <VBox styleClass="progress-card">
+      <!-- Grid / Secciones de Columnas por Estados -->
+      <GridPane hgap="16" vgap="16" VBox.vgrow="ALWAYS">
+         <columnConstraints>
+            <ColumnConstraints percentWidth="38" />
+            <ColumnConstraints percentWidth="31" />
+            <ColumnConstraints percentWidth="31" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="ALWAYS" />
+         </rowConstraints>
          <children>
-            <Label fx:id="currentSongLabel" text="Esperando inicio de pista..." styleClass="card-title" wrapText="true">
-               <graphic>
-                  <FontIcon iconLiteral="mdi2m-music" iconSize="16" />
-               </graphic>
-            </Label>
-            <HBox alignment="CENTER_LEFT">
+            <!-- Columna 1: Descargando -->
+            <VBox spacing="12" GridPane.columnIndex="0">
                <children>
-                  <Label fx:id="currentProgressLabel" text="Descargando..." styleClass="card-subtitle" />
-                  <Region HBox.hgrow="ALWAYS" />
-                  <Label fx:id="currentPercentageLabel" text="0.0%" styleClass="card-title" />
+                  <Label text="Descargando" styleClass="section-header-title" />
+                  <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+                     <content>
+                        <VBox fx:id="activeDownloadsContainer" spacing="12">
+                           <!-- Las tarjetas de descargas activas se generan dinámicamente -->
+                        </VBox>
+                     </content>
+                  </ScrollPane>
                </children>
-            </HBox>
-            <ProgressBar fx:id="currentProgressBar" progress="0.0" maxWidth="Infinity" styleClass="progress-bar, success" prefHeight="10.0" />
+            </VBox>
+
+            <!-- Columna 2: En Espera -->
+            <VBox spacing="12" GridPane.columnIndex="1">
+               <children>
+                  <Label text="En Espera" styleClass="section-header-title" />
+                  <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+                     <content>
+                        <VBox fx:id="waitingDownloadsContainer" spacing="12">
+                           <!-- Las tarjetas en espera se generan dinámicamente -->
+                        </VBox>
+                     </content>
+                  </ScrollPane>
+               </children>
+            </VBox>
+
+            <!-- Columna 3: Completado -->
+            <VBox spacing="12" GridPane.columnIndex="2">
+               <children>
+                  <Label text="Completado" styleClass="section-header-title" />
+                  <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+                     <content>
+                        <VBox fx:id="completedDownloadsContainer" spacing="12">
+                           <!-- Las tarjetas completadas se generan dinámicamente -->
+                        </VBox>
+                     </content>
+                  </ScrollPane>
+               </children>
+            </VBox>
          </children>
-      </VBox>
+      </GridPane>
    </children>
 </VBox>
+

@@ -3,53 +3,107 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.image.Image?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane fx:id="rootNode" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="com.example.interfaz.controller.MainController" 
-            styleClass="main-layout" stylesheets="@styles.css" prefWidth="920.0" prefHeight="650.0">
+            styleClass="main-layout" stylesheets="@styles.css" prefWidth="980.0" prefHeight="680.0">
 
-   <!-- Sidebar Lateral Izquierdo -->
-   <left>
-      <VBox styleClass="sidebar">
+   <!-- Barra de Título Personalizada (Custom Dark Title Bar) -->
+   <top>
+      <HBox fx:id="customTitleBar" styleClass="custom-title-bar" alignment="CENTER_RIGHT" spacing="2">
          <children>
-            <!-- Cabecera Sidebar -->
-            <HBox styleClass="sidebar-header">
+            <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-padding: 0 0 0 12;" HBox.hgrow="ALWAYS">
                <children>
-                  <ImageView fitWidth="28" fitHeight="28" pickOnBounds="true" preserveRatio="true">
+                  <ImageView fitWidth="16" fitHeight="16" pickOnBounds="true" preserveRatio="true">
                      <image>
                         <Image url="@app.png" />
                      </image>
                   </ImageView>
-                  <Label text="Playlist Downloader" styleClass="app-title-text" />
+                  <Label text="Playlist Downloader" styleClass="window-title-text" />
+               </children>
+            </HBox>
+            <Button fx:id="btnMinimize" mnemonicParsing="false" onAction="#onMinimizeWindow" styleClass="title-bar-btn">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2w-window-minimize" iconSize="14" />
+               </graphic>
+               <tooltip>
+                  <Tooltip text="Minimizar" />
+               </tooltip>
+            </Button>
+            <Button fx:id="btnMaximize" mnemonicParsing="false" onAction="#onMaximizeWindow" styleClass="title-bar-btn">
+               <graphic>
+                  <FontIcon fx:id="iconMaximize" iconLiteral="mdi2w-window-maximize" iconSize="14" />
+               </graphic>
+               <tooltip>
+                  <Tooltip text="Maximizar / Restaurar" />
+               </tooltip>
+            </Button>
+            <Button fx:id="btnClose" mnemonicParsing="false" onAction="#onCloseWindow" styleClass="title-bar-btn, close-btn">
+               <graphic>
+                  <FontIcon iconLiteral="mdi2w-window-close" iconSize="14" />
+               </graphic>
+               <tooltip>
+                  <Tooltip text="Cerrar" />
+               </tooltip>
+            </Button>
+         </children>
+      </HBox>
+   </top>
+
+   <!-- Sidebar Lateral Izquierdo -->
+   <left>
+      <VBox fx:id="sidebar" styleClass="sidebar">
+         <children>
+            <!-- Cabecera Sidebar -->
+            <HBox styleClass="sidebar-header">
+               <children>
+                  <ImageView fitWidth="26" fitHeight="26" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@app.png" />
+                     </image>
+                  </ImageView>
+                  <Label fx:id="appTitleLabel" text="Playlist Downloader" styleClass="app-title-text" />
                </children>
             </HBox>
 
             <!-- Menú de Navegación -->
-            <Label text="MENÚ PRINCIPAL" styleClass="sidebar-section-title" />
             <VBox styleClass="sidebar-nav">
                <children>
-                  <Button fx:id="btnNavQueue" mnemonicParsing="false" onAction="#onNavQueue" text=" Cola de Espera" styleClass="sidebar-btn, active">
+                  <Button fx:id="btnNavWelcome" mnemonicParsing="false" onAction="#onNavWelcome" text=" INICIO" styleClass="sidebar-btn, active">
                      <graphic>
-                        <FontIcon iconLiteral="mdi2p-playlist-music" iconSize="18" />
+                        <FontIcon iconLiteral="mdi2h-home" iconSize="18" />
                      </graphic>
+                     <tooltip>
+                        <Tooltip text="Inicio" />
+                     </tooltip>
                   </Button>
-                  <Button fx:id="btnNavDownloads" mnemonicParsing="false" onAction="#onNavDownloads" text=" Descargas" styleClass="sidebar-btn">
+                  <Button fx:id="btnNavDashboard" mnemonicParsing="false" onAction="#onNavDownloads" text=" DASHBOARD" styleClass="sidebar-btn">
                      <graphic>
-                        <FontIcon iconLiteral="mdi2d-download-outline" iconSize="18" />
+                        <FontIcon iconLiteral="mdi2v-view-dashboard" iconSize="18" />
                      </graphic>
+                     <tooltip>
+                        <Tooltip text="Dashboard" />
+                     </tooltip>
                   </Button>
-                  <Button fx:id="btnNavLogs" mnemonicParsing="false" onAction="#onNavLogs" text=" Registros" styleClass="sidebar-btn">
+                  <Button fx:id="btnNavLogs" mnemonicParsing="false" onAction="#onNavLogs" text=" REGISTROS" styleClass="sidebar-btn">
                      <graphic>
                         <FontIcon iconLiteral="mdi2c-console" iconSize="18" />
                      </graphic>
+                     <tooltip>
+                        <Tooltip text="Registros" />
+                     </tooltip>
                   </Button>
-                  <Button fx:id="btnNavAnalyzer" mnemonicParsing="false" onAction="#onNavAnalyzer" text=" Analizador" styleClass="sidebar-btn">
+                  <Button fx:id="btnNavAnalyzer" mnemonicParsing="false" onAction="#onNavAnalyzer" text=" ANALIZADOR" styleClass="sidebar-btn">
                      <graphic>
                         <FontIcon iconLiteral="mdi2f-folder-search-outline" iconSize="18" />
                      </graphic>
+                     <tooltip>
+                        <Tooltip text="Analizador" />
+                     </tooltip>
                   </Button>
                </children>
             </VBox>
@@ -57,25 +111,31 @@
             <Region VBox.vgrow="ALWAYS" />
 
             <!-- Tarjeta de Configuración en Sidebar -->
-            <VBox styleClass="sidebar-config-card">
+            <VBox fx:id="sidebarConfigCard" styleClass="sidebar-config-card">
                <children>
                   <HBox alignment="CENTER_LEFT" spacing="6">
                      <children>
                         <FontIcon iconLiteral="mdi2f-folder" iconSize="16" />
-                        <Label text="Carpeta de Música" styleClass="card-title" />
+                        <Label text="Carpeta de Música" styleClass="card-title-text" />
                      </children>
                   </HBox>
-                  <Label fx:id="musicFolderLabel" text="Desktop/MUSICA" styleClass="folder-path-text" wrapText="true" />
+                  <Label text="Ubicación de descarga" styleClass="folder-path-text" />
                   <HBox spacing="6" alignment="CENTER_LEFT">
                      <children>
-                        <Button fx:id="selectFolderButton" mnemonicParsing="false" onAction="#onSelectMusicFolder" text="Cambiar" styleClass="button, sm">
+                        <Button fx:id="selectFolderButton" mnemonicParsing="false" onAction="#onSelectMusicFolder" styleClass="btn-dark-subtle">
                            <graphic>
-                              <FontIcon iconLiteral="mdi2f-folder-open" iconSize="14" />
+                              <HBox spacing="4" alignment="CENTER">
+                                 <children>
+                                    <FontIcon iconLiteral="mdi2f-folder-open" iconSize="14" />
+                                    <Label fx:id="musicFolderLabel" text="Cam..." styleClass="folder-path-text" maxWidth="120" />
+                                    <FontIcon iconLiteral="mdi2o-open-in-new" iconSize="12" />
+                                 </children>
+                              </HBox>
                            </graphic>
                         </Button>
-                        <Button fx:id="resetFolderButton" mnemonicParsing="false" onAction="#onResetMusicFolder" text="Default" styleClass="button, sm">
+                        <Button fx:id="resetFolderButton" mnemonicParsing="false" onAction="#onSelectMusicFolder" text="Modificar" styleClass="btn-dark-subtle">
                            <graphic>
-                              <FontIcon iconLiteral="mdi2r-refresh" iconSize="14" />
+                              <FontIcon iconLiteral="mdi2p-pencil-outline" iconSize="14" />
                            </graphic>
                         </Button>
                      </children>
@@ -84,11 +144,9 @@
             </VBox>
 
             <!-- Cambiador de Tema y Control de yt-dlp en la parte inferior -->
-            <HBox alignment="CENTER_LEFT" spacing="8">
+            <HBox alignment="CENTER" spacing="8" style="-fx-padding: 4 0 0 0;">
                <children>
-                  <Label text="Tema visual" styleClass="folder-path-text" />
-                  <Region HBox.hgrow="ALWAYS" />
-                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" styleClass="button, icon">
+                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" text=" Buscar actualización" styleClass="btn-dark-subtle" HBox.hgrow="ALWAYS" maxWidth="Infinity" style="-fx-padding: 6 10;">
                      <tooltip>
                         <Tooltip text="Buscar actualización de yt-dlp" />
                      </tooltip>
@@ -96,7 +154,7 @@
                         <FontIcon iconLiteral="mdi2u-update" iconSize="16" />
                      </graphic>
                   </Button>
-                  <Button fx:id="themeToggleButton" mnemonicParsing="false" onAction="#onToggleTheme" styleClass="button, icon">
+                  <Button fx:id="themeToggleButton" mnemonicParsing="false" onAction="#onToggleTheme" styleClass="btn-dark-subtle" style="-fx-padding: 6 10;">
                      <tooltip>
                         <Tooltip text="Cambiar Tema Oscuro/Claro" />
                      </tooltip>
@@ -115,41 +173,31 @@
       <VBox spacing="16.0" style="-fx-padding: 20;">
          <children>
 
-            <!-- Tarjeta Superior: Entrada de URL y Controles de Acción -->
-            <VBox styleClass="card-panel">
+            <!-- Tarjeta Superior: Entrada de URL y Controles de Acción (Pill bar) -->
+            <HBox fx:id="topBarContainer" spacing="12.0" alignment="CENTER_LEFT" visible="false" managed="false">
                <children>
-                  <HBox spacing="8" alignment="CENTER_LEFT">
+                  <!-- Campo de entrada estilo píldora -->
+                  <HBox spacing="8" alignment="CENTER_LEFT" styleClass="search-pill-container" HBox.hgrow="ALWAYS">
                      <children>
-                        <FontIcon iconLiteral="mdi2l-link-variant" iconSize="18" />
-                        <Label text="Enlace de YouTube o Playlist" styleClass="card-title" />
+                        <TextField fx:id="inputField" promptText="Pega aquí tu URL de YouTube..." styleClass="search-input-field" HBox.hgrow="ALWAYS" />
                      </children>
                   </HBox>
-                  <HBox spacing="12.0" alignment="CENTER_LEFT">
-                     <children>
-                        <TextField fx:id="inputField" promptText="Pega aquí tu URL de YouTube..." styleClass="text-field" HBox.hgrow="ALWAYS" />
-                        <Button fx:id="addButton" mnemonicParsing="false" onAction="#onAddToQueue" text="Agregar" styleClass="button, accent">
-                           <graphic>
-                              <FontIcon iconLiteral="mdi2p-plus" iconSize="16" />
-                           </graphic>
-                        </Button>
-                        <Button fx:id="startButton" mnemonicParsing="false" onAction="#onStartDownload" text="Descargar" styleClass="button, success">
-                           <graphic>
-                              <FontIcon iconLiteral="mdi2p-play" iconSize="16" />
-                           </graphic>
-                        </Button>
-                     </children>
-                  </HBox>
+                  <Button fx:id="addButton" mnemonicParsing="false" onAction="#onAddToQueue" text="+ AGREGAR" styleClass="btn-pill-primary" />
+                  <Button fx:id="startButton" mnemonicParsing="false" onAction="#onStartDownload" text="► DESCARGAR TODO" styleClass="btn-pill-success" />
                </children>
-            </VBox>
+            </HBox>
 
             <!-- StackPane para Vistas Dinámicas Incluidas -->
             <StackPane VBox.vgrow="ALWAYS">
                <children>
-                  <!-- Sub-vista 1: Cola de Espera (Queue View) -->
-                  <fx:include fx:id="queueView" source="queue-view.fxml" />
+                  <!-- Sub-vista 0: Vista de Inicio Landing (Welcome View) -->
+                  <fx:include fx:id="welcomeView" source="welcome-view.fxml" />
 
-                  <!-- Sub-vista 2: Progreso de Descarga (Progress View) -->
-                  <fx:include fx:id="progressView" source="progress-view.fxml" />
+                  <!-- Sub-vista 1: Progreso de Descarga (Progress View / Gestión de Descargas) -->
+                  <fx:include fx:id="progressView" source="progress-view.fxml" visible="false" managed="false" />
+
+                  <!-- Sub-vista 2: Cola de Espera (Queue View) -->
+                  <fx:include fx:id="queueView" source="queue-view.fxml" visible="false" managed="false" />
 
                   <!-- Sub-vista 3: Logs / Consola -->
                   <fx:include fx:id="logsSection" source="logs-view.fxml" visible="false" managed="false" />
