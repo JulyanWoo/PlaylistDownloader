@@ -21,56 +21,82 @@ public class BinaryResolver {
 
     public String resolveYtDlpPath() {
         String env = System.getenv(YT_DLP_ENV);
-        if (isExistingFile(env)) return env;
+        if (isExistingFile(env)) {
+            return env;
+        }
 
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_YT_DLP_RELATIVE);
-        if (Files.exists(relative)) return relative.toString();
+        if (Files.exists(relative)) {
+            return relative.toString();
+        }
 
         File jarFolder = getJarFolder();
         if (jarFolder != null) {
             File jarRelative = new File(jarFolder, DEFAULT_YT_DLP_RELATIVE);
-            if (jarRelative.exists()) return jarRelative.getAbsolutePath();
+            if (jarRelative.exists()) {
+                return jarRelative.getAbsolutePath();
+            }
 
             File jarParentRelative = new File(jarFolder.getParentFile(), DEFAULT_YT_DLP_RELATIVE);
-            if (jarParentRelative.exists()) return jarParentRelative.getAbsolutePath();
+            if (jarParentRelative.exists()) {
+                return jarParentRelative.getAbsolutePath();
+            }
         }
 
         String exe = getExecutableName("yt-dlp");
         Path srcMainRelative = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs", exe);
-        if (Files.exists(srcMainRelative)) return srcMainRelative.toString();
+        if (Files.exists(srcMainRelative)) {
+            return srcMainRelative.toString();
+        }
 
         String underSrc = findInDir(Paths.get(System.getProperty("user.dir"), "src", "main", "Libs"), exe);
-        if (underSrc != null) return underSrc;
+        if (underSrc != null) {
+            return underSrc;
+        }
 
         String foundInPath = findInSystemPath(exe);
-        if (foundInPath != null) return foundInPath;
+        if (foundInPath != null) {
+            return foundInPath;
+        }
 
         return exe;
     }
 
     public String resolveFfmpegPath() {
         String env = System.getenv(FFMPEG_ENV);
-        if (isExistingFile(env)) return env;
+        if (isExistingFile(env)) {
+            return env;
+        }
 
         Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_FFMPEG_RELATIVE);
-        if (Files.exists(relative)) return relative.toString();
+        if (Files.exists(relative)) {
+            return relative.toString();
+        }
 
         File jarFolder = getJarFolder();
         if (jarFolder != null) {
             File jarRelative = new File(jarFolder, DEFAULT_FFMPEG_RELATIVE);
-            if (jarRelative.exists()) return jarRelative.getAbsolutePath();
+            if (jarRelative.exists()) {
+                return jarRelative.getAbsolutePath();
+            }
 
             File jarParentRelative = new File(jarFolder.getParentFile(), DEFAULT_FFMPEG_RELATIVE);
-            if (jarParentRelative.exists()) return jarParentRelative.getAbsolutePath();
+            if (jarParentRelative.exists()) {
+                return jarParentRelative.getAbsolutePath();
+            }
         }
 
         String exe = getExecutableName("ffmpeg");
         Path srcMainLibs = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs");
         String foundLocal = findInDir(srcMainLibs, exe);
-        if (foundLocal != null) return foundLocal;
+        if (foundLocal != null) {
+            return foundLocal;
+        }
 
         String foundInPath = findInSystemPath(exe);
-        if (foundInPath != null) return foundInPath;
+        if (foundInPath != null) {
+            return foundInPath;
+        }
 
         return exe;
     }
@@ -80,7 +106,9 @@ public class BinaryResolver {
     }
 
     private boolean isExistingFile(String path) {
-        if (path == null || path.trim().isEmpty()) return false;
+        if (path == null || path.trim().isEmpty()) {
+            return false;
+        }
         return new File(path).exists();
     }
 
@@ -100,17 +128,23 @@ public class BinaryResolver {
 
     private String findInSystemPath(String exe) {
         String path = System.getenv("PATH");
-        if (path == null || path.isEmpty()) return null;
+        if (path == null || path.isEmpty()) {
+            return null;
+        }
         String[] dirs = path.split(File.pathSeparator);
         for (String dir : dirs) {
             File f = new File(dir, exe);
-            if (f.exists() && f.isFile()) return f.getAbsolutePath();
+            if (f.exists() && f.isFile()) {
+                return f.getAbsolutePath();
+            }
         }
         return null;
     }
 
     private String findInDir(Path dir, String exe) {
-        if (dir == null || !Files.exists(dir)) return null;
+        if (dir == null || !Files.exists(dir)) {
+            return null;
+        }
         try (var stream = Files.walk(dir, 4)) {
             var opt = stream.filter(Files::isRegularFile)
                     .filter(p -> p.getFileName().toString().equalsIgnoreCase(exe))

@@ -1,11 +1,17 @@
 package com.example.interfaz.util;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
 
 public class FileUtils {
 
@@ -87,7 +93,9 @@ public class FileUtils {
     }
 
     public static long getFileSize(String filePath) {
-        if (filePath == null) return -1;
+        if (filePath == null) {
+            return -1;
+        }
         Path path = Paths.get(filePath);
         try {
             return Files.exists(path) ? Files.size(path) : -1;
@@ -97,7 +105,9 @@ public class FileUtils {
     }
 
     public static boolean deleteFile(String filePath) {
-        if (filePath == null) return true;
+        if (filePath == null) {
+            return true;
+        }
         try {
             Path path = Paths.get(filePath);
             return Files.deleteIfExists(path);
@@ -106,9 +116,6 @@ public class FileUtils {
             return false;
         }
     }
-
-
-
 
     public static String extractFileName(String filePath) {
         if (filePath == null || filePath.trim().isEmpty()) {
@@ -131,8 +138,8 @@ public class FileUtils {
         }
 
         return title.replaceAll("[_\\-]+", " ")
-                    .replaceAll("\\s+", " ")
-                    .trim();
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     public static boolean isValidFilePath(String filePath) {

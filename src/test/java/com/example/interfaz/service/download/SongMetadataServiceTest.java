@@ -5,9 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifies SongMetadataService fallback behaviour when yt-dlp is unavailable.
- */
 class SongMetadataServiceTest {
 
     private final SongMetadataService metadataService = new SongMetadataService();
@@ -28,7 +25,6 @@ class SongMetadataServiceTest {
 
     @Test
     void shouldReturnNonNullTitleForValidUrl() {
-        // yt-dlp may not be available in CI — we only assert a non-null, non-empty title
         Song song = metadataService.getSongInfo("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
         assertNotNull(song);
         assertNotNull(song.getTitle());

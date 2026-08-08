@@ -183,6 +183,39 @@ public class ServiceFactory {
         return ytDlpUpdateService;
     }
 
+    private com.example.interfaz.service.analyzer.DuplicateSelectionService duplicateSelectionService;
+    private com.example.interfaz.service.analyzer.DuplicateManagementService duplicateManagementService;
+    private com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator analyzerTableConfigurator;
+    private com.example.interfaz.service.analyzer.SongLanguageBrowserService songLanguageBrowserService;
+
+    public com.example.interfaz.service.analyzer.DuplicateSelectionService getDuplicateSelectionService() {
+        if (duplicateSelectionService == null) {
+            duplicateSelectionService = new com.example.interfaz.service.analyzer.DuplicateSelectionService();
+        }
+        return duplicateSelectionService;
+    }
+
+    public com.example.interfaz.service.analyzer.DuplicateManagementService getDuplicateManagementService() {
+        if (duplicateManagementService == null) {
+            duplicateManagementService = new com.example.interfaz.service.analyzer.DuplicateManagementService(getLibraryAnalyzerService());
+        }
+        return duplicateManagementService;
+    }
+
+    public com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator getAnalyzerTableConfigurator() {
+        if (analyzerTableConfigurator == null) {
+            analyzerTableConfigurator = new com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator();
+        }
+        return analyzerTableConfigurator;
+    }
+
+    public com.example.interfaz.service.analyzer.SongLanguageBrowserService getSongLanguageBrowserService() {
+        if (songLanguageBrowserService == null) {
+            songLanguageBrowserService = new com.example.interfaz.service.analyzer.SongLanguageBrowserService(getMusicFolderService());
+        }
+        return songLanguageBrowserService;
+    }
+
     public LibraryAnalyzerService getLibraryAnalyzerService() {
         if (libraryAnalyzerService == null) {
             libraryAnalyzerService = new LibraryAnalyzerService(
@@ -243,6 +276,10 @@ public class ServiceFactory {
         duplicateDetectionService = null;
         libraryAnalyzerService = null;
         ytDlpUpdateService = null;
+        duplicateSelectionService = null;
+        duplicateManagementService = null;
+        analyzerTableConfigurator = null;
+        songLanguageBrowserService = null;
     }
 
     public static synchronized void reset() {

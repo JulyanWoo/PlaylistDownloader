@@ -1,14 +1,18 @@
 package com.example.interfaz.controller;
 
-import com.example.interfaz.service.download.DownloadProgressParser;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings({ "unused", "FXML" })
+import com.example.interfaz.service.download.DownloadProgressParser;
+
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.layout.VBox;
+
+@SuppressWarnings({"unused", "FXML"})
 public class ProgressController implements DownloadProgressParser.ProgressListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgressController.class);
@@ -166,12 +170,15 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
 
     public void updateCurrentProgress(double progress, String details) {
         Platform.runLater(() -> {
-            if (currentProgressBar != null)
+            if (currentProgressBar != null) {
                 currentProgressBar.setProgress(progress);
-            if (currentPercentageLabel != null)
+            }
+            if (currentPercentageLabel != null) {
                 currentPercentageLabel.setText(String.format("%.1f%%", progress * 100));
-            if (currentProgressLabel != null)
+            }
+            if (currentProgressLabel != null) {
                 currentProgressLabel.setText(details);
+            }
         });
     }
 
@@ -184,13 +191,15 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
         Platform.runLater(() -> {
             this.currentItem = currentItem;
             this.totalItems = totalItems;
-            if (overallProgressLabel != null)
+            if (overallProgressLabel != null) {
                 overallProgressLabel.setText("📋 Progreso de la Playlist:");
+            }
             if (totalItems > 0 && overallProgressBar != null) {
                 double progress = (double) currentItem / totalItems;
                 overallProgressBar.setProgress(progress);
-                if (overallPercentageLabel != null)
+                if (overallPercentageLabel != null) {
                     overallPercentageLabel.setText(String.format("%d/%d", currentItem, totalItems));
+                }
             }
         });
     }
@@ -202,8 +211,9 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
 
     public void updateCurrentSong(String songInfo) {
         Platform.runLater(() -> {
-            if (currentSongLabel != null)
+            if (currentSongLabel != null) {
                 currentSongLabel.setText("Descargando: " + songInfo);
+            }
         });
     }
 
@@ -214,8 +224,9 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
 
     public void updateDownloadSpeed(String speed) {
         Platform.runLater(() -> {
-            if (downloadSpeedLabel != null)
+            if (downloadSpeedLabel != null) {
                 downloadSpeedLabel.setText(speed);
+            }
         });
     }
 
@@ -244,16 +255,21 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
 
     public void resetProgress() {
         Platform.runLater(() -> {
-            if (currentProgressBar != null)
+            if (currentProgressBar != null) {
                 currentProgressBar.setProgress(0);
-            if (overallProgressBar != null)
+            }
+            if (overallProgressBar != null) {
                 overallProgressBar.setProgress(0);
-            if (currentPercentageLabel != null)
+            }
+            if (currentPercentageLabel != null) {
                 currentPercentageLabel.setText("0.0%");
-            if (overallPercentageLabel != null)
+            }
+            if (overallPercentageLabel != null) {
                 overallPercentageLabel.setText("0/0");
-            if (currentSongLabel != null)
+            }
+            if (currentSongLabel != null) {
                 currentSongLabel.setText("Esperando descarga...");
+            }
             totalItems = 0;
             currentItem = 0;
             downloadedCount = 0;
@@ -263,17 +279,20 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
     public void markDownloadCompleted() {
         Platform.runLater(() -> {
             updateStatus("✅ Descarga completada");
-            if (currentProgressLabel != null)
+            if (currentProgressLabel != null) {
                 currentProgressLabel.setText("Todas las descargas completadas");
-            if (overallProgressBar != null)
+            }
+            if (overallProgressBar != null) {
                 overallProgressBar.setProgress(1.0);
-            if (overallPercentageLabel != null)
+            }
+            if (overallPercentageLabel != null) {
                 overallPercentageLabel.setText("100.0%");
+            }
         });
     }
 
     public void markDownloadPaused() {
-        Platform.runLater(() -> updateStatus("⏸ Descarga pausada"));
+        Platform.runLater(() -> updateStatus("Descarga pausada"));
     }
 
     public void markDownloadCancelled() {

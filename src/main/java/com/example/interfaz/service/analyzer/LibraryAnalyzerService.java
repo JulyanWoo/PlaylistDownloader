@@ -1,19 +1,8 @@
 package com.example.interfaz.service.analyzer;
 
-import com.example.interfaz.event.EventPublisher;
-import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.*;
-import com.example.interfaz.model.analyzer.DuplicateCandidate;
-import com.example.interfaz.model.analyzer.DuplicateGroup;
-import com.example.interfaz.model.analyzer.LibraryAnalysisResult;
-import com.example.interfaz.model.analyzer.SongFile;
-import com.example.interfaz.service.config.MusicFolderService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -26,6 +15,22 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.example.interfaz.event.EventPublisher;
+import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisCancelled;
+import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisFinished;
+import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryAnalysisStarted;
+import com.example.interfaz.event.analyzer.LibraryAnalyzerEvent.LibraryProgressUpdated;
+import com.example.interfaz.model.analyzer.DuplicateCandidate;
+import com.example.interfaz.model.analyzer.DuplicateGroup;
+import com.example.interfaz.model.analyzer.LanguageDetectorMode;
+import com.example.interfaz.model.analyzer.LanguageInfo;
+import com.example.interfaz.model.analyzer.LibraryAnalysisResult;
+import com.example.interfaz.model.analyzer.SongFile;
+import com.example.interfaz.service.config.MusicFolderService;
 
 public class LibraryAnalyzerService implements AutoCloseable {
 
@@ -45,9 +50,9 @@ public class LibraryAnalyzerService implements AutoCloseable {
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
 
     public LibraryAnalyzerService(MusicFolderService musicFolderService,
-                                  SongMetadataReader metadataReader,
-                                  DuplicateDetectionService duplicateDetectionService,
-                                  EventPublisher eventPublisher) {
+            SongMetadataReader metadataReader,
+            DuplicateDetectionService duplicateDetectionService,
+            EventPublisher eventPublisher) {
         this.musicFolderService = musicFolderService;
         this.metadataReader = metadataReader != null ? metadataReader : new SongMetadataReader();
         this.duplicateDetectionService = duplicateDetectionService != null ? duplicateDetectionService : new DuplicateDetectionService();
@@ -82,6 +87,14 @@ public class LibraryAnalyzerService implements AutoCloseable {
         }
     }
 
+    public LanguageDetectorMode getLanguageDetectorMode() {
+        return duplicateDetectionService.getLanguageDetectorMode();
+    }
+
+    public void setLanguageDetectorMode(LanguageDetectorMode mode) {
+        duplicateDetectionService.setLanguageDetectorMode(mode);
+    }
+
     public boolean isAnalyzing() {
         return currentTask != null && !currentTask.isDone();
     }
@@ -112,10 +125,14 @@ public class LibraryAnalyzerService implements AutoCloseable {
         List<DuplicateGroup> duplicateGroups = new ArrayList<>();
         long processedCount = 0;
 
+        if (eventPublisher != null) {
+            eventPublisher.publish(new LibraryProgressUpdated(0, totalFiles, 0, "Etapa 1/5: Escaneando archivos en la biblioteca...", 0, 0));
+        }
+
         for (Path filePath : audioFiles) {
             if (cancelled.get() || Thread.currentThread().isInterrupted()) {
                 LOGGER.info("Library analysis cancelled during scanning.");
-                publishCancelledResult(processedCount, totalFiles, duplicateGroups, startTime);
+                publishCancelledResult(processedCount, totalFiles, duplicateGroups, processedSongs, startTime);
                 return;
             }
 
@@ -136,7 +153,7 @@ public class LibraryAnalyzerService implements AutoCloseable {
                             processedCount,
                             totalFiles,
                             countDuplicates(duplicateGroups),
-                            "Leyendo metadatos: " + filePath.getFileName(),
+                            "Etapa 2/4: Leyendo metadatos: " + filePath.getFileName(),
                             elapsed,
                             estimatedRemaining
                     ));
@@ -144,13 +161,38 @@ public class LibraryAnalyzerService implements AutoCloseable {
             }
         }
 
-        // Run duplicate detection algorithm
+        // Phase 3: Language detection pass on ALL songs (feeds Language Browser tab)
         if (!cancelled.get()) {
+            if (eventPublisher != null) {
+                eventPublisher.publish(new LibraryProgressUpdated(totalFiles, totalFiles, 0,
+                        "Etapa 3/5: Detectando idioma de canciones...", System.currentTimeMillis() - startTime, 0));
+            }
+            LanguageDetectorService langDetector = new LanguageDetectorService(
+                    duplicateDetectionService.getLanguageDetectorMode());
+            for (SongFile song : processedSongs) {
+                if (cancelled.get() || Thread.currentThread().isInterrupted()) break;
+                String text = buildLangText(song);
+                LanguageDetectorService.LanguageDetectionResult lr = langDetector.detectLanguage(text);
+                song.setLanguageInfo(new LanguageInfo(lr.languageCode(), lr.languageName(),
+                        lr.confidence(), System.currentTimeMillis()));
+            }
+        }
+
+        // Phase 4 & 5: Similarity matching & Recommendations
+        if (!cancelled.get()) {
+            if (eventPublisher != null) {
+                eventPublisher.publish(new LibraryProgressUpdated(totalFiles, totalFiles, 0,
+                        "Etapa 4/5: Comparando similitud y variaciones de pistas...", System.currentTimeMillis() - startTime, 0));
+            }
             duplicateGroups = duplicateDetectionService.detectDuplicates(processedSongs);
+            if (eventPublisher != null) {
+                eventPublisher.publish(new LibraryProgressUpdated(totalFiles, totalFiles, countDuplicates(duplicateGroups),
+                        "Etapa 5/5: Generando recomendaciones...", System.currentTimeMillis() - startTime, 0));
+            }
         }
 
         if (cancelled.get()) {
-            publishCancelledResult(processedCount, totalFiles, duplicateGroups, startTime);
+            publishCancelledResult(processedCount, totalFiles, duplicateGroups, processedSongs, startTime);
             return;
         }
 
@@ -164,7 +206,8 @@ public class LibraryAnalyzerService implements AutoCloseable {
                 totalDuplicates,
                 recoverableSpace,
                 totalDurationMillis,
-                duplicateGroups
+                duplicateGroups,
+                processedSongs
         );
 
         if (eventPublisher != null) {
@@ -174,7 +217,20 @@ public class LibraryAnalyzerService implements AutoCloseable {
         LOGGER.info("Library analysis finished. Songs: {}, Duplicates: {}", processedSongs.size(), totalDuplicates);
     }
 
-    private void publishCancelledResult(long processedCount, long totalFiles, List<DuplicateGroup> groups, long startTime) {
+    /** Builds text for language detection, falling back to filename when tags are absent. */
+    private String buildLangText(SongFile s) {
+        String artist = s.getArtist();
+        String title = s.getTitle();
+        boolean hasArtist = artist != null && !artist.isBlank();
+        boolean hasTitle = title != null && !title.isBlank();
+        if (hasArtist && hasTitle) return artist + " " + title;
+        if (hasTitle) return title;
+        if (hasArtist) return artist + " " + s.getFileName();
+        return s.getFileName();
+    }
+
+    private void publishCancelledResult(long processedCount, long totalFiles,
+            List<DuplicateGroup> groups, List<SongFile> songs, long startTime) {
         long totalDuplicates = countDuplicates(groups);
         long recoverableSpace = calculateRecoverableSpace(groups);
         long elapsed = System.currentTimeMillis() - startTime;
@@ -185,7 +241,8 @@ public class LibraryAnalyzerService implements AutoCloseable {
                 totalDuplicates,
                 recoverableSpace,
                 elapsed,
-                groups
+                groups,
+                songs != null ? songs : new ArrayList<>()
         );
 
         if (eventPublisher != null) {
@@ -194,10 +251,15 @@ public class LibraryAnalyzerService implements AutoCloseable {
     }
 
     public boolean isAudioFile(Path path) {
-        if (path == null || Files.isDirectory(path)) return false;
+        if (path == null || Files.isDirectory(path)) {
+            return false;
+        }
         try {
-            if (Files.isHidden(path)) return false;
-        } catch (IOException ignored) {}
+            if (Files.isHidden(path)) {
+                return false;
+            }
+        } catch (IOException ignored) {
+        }
 
         String name = path.getFileName().toString().toLowerCase();
         if (name.endsWith(".part") || name.endsWith(".temp") || name.endsWith(".tmp")) {
@@ -230,6 +292,9 @@ public class LibraryAnalyzerService implements AutoCloseable {
         }
 
         int movedCount = 0;
+        List<String> manifestLines = new ArrayList<>();
+        manifestLines.add("[");
+
         for (DuplicateCandidate candidate : selectedCandidates) {
             if (candidate.isSelectedForDeletion() && !candidate.isOriginal()) {
                 Path source = candidate.getSongFile().getPath();
@@ -237,6 +302,9 @@ public class LibraryAnalyzerService implements AutoCloseable {
                 try {
                     Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
                     movedCount++;
+                    manifestLines.add(String.format("  {\"original\":\"%s\", \"quarantine\":\"%s\"},",
+                            source.toString().replace("\\", "\\\\"),
+                            target.toString().replace("\\", "\\\\")));
                     LOGGER.info("Moved duplicate to quarantine: {} -> {}", source, target);
                 } catch (IOException e) {
                     LOGGER.error("Failed to move file to quarantine: {}", source, e);
@@ -244,7 +312,57 @@ public class LibraryAnalyzerService implements AutoCloseable {
             }
         }
 
+        if (movedCount > 0) {
+            try {
+                Path manifestPath = quarantineDir.resolve("quarantine-manifest.json");
+                Files.write(manifestPath, manifestLines);
+            } catch (IOException e) {
+                LOGGER.error("Failed to write quarantine manifest", e);
+            }
+        }
+
         return movedCount;
+    }
+
+    public int restoreQuarantinedFiles() {
+        String baseFolder = musicFolderService.getCurrentMusicFolder();
+        Path quarantineDir = Paths.get(baseFolder, ".duplicates");
+        Path manifestPath = quarantineDir.resolve("quarantine-manifest.json");
+
+        if (!Files.exists(manifestPath)) {
+            return 0;
+        }
+
+        int restored = 0;
+        try {
+            List<String> lines = Files.readAllLines(manifestPath);
+            for (String line : lines) {
+                if (line.contains("\"original\":")) {
+                    int origStart = line.indexOf("\"original\":\"") + 12;
+                    int origEnd = line.indexOf("\", \"quarantine\":");
+                    int quaramStart = line.indexOf("\"quarantine\":\"") + 14;
+                    int quaramEnd = line.lastIndexOf("\"}");
+
+                    if (origStart > 11 && origEnd > origStart && quaramStart > 13 && quaramEnd > quaramStart) {
+                        Path origPath = Paths.get(line.substring(origStart, origEnd).replace("\\\\", "\\"));
+                        Path quaramPath = Paths.get(line.substring(quaramStart, quaramEnd).replace("\\\\", "\\"));
+
+                        if (Files.exists(quaramPath)) {
+                            Path parent = origPath.getParent();
+                            if (parent != null && !Files.exists(parent)) {
+                                Files.createDirectories(parent);
+                            }
+                            Files.move(quaramPath, origPath, StandardCopyOption.REPLACE_EXISTING);
+                            restored++;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to restore quarantined files", e);
+        }
+
+        return restored;
     }
 
     private long countDuplicates(List<DuplicateGroup> groups) {

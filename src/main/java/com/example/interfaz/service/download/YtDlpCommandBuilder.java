@@ -17,14 +17,7 @@ public class YtDlpCommandBuilder {
         this(new BinaryResolver());
     }
 
-    /**
-     * Builds a command to download a single song (audio only, mp3).
-     * <ul>
-     * <li>--no-playlist : ignores &amp;list= params in URLs (radio/mix)</li>
-     * <li>--newline : forces yt-dlp to flush each progress line immediately</li>
-     * <li>--socket-timeout 10 : drops hung network connections within 10 s</li>
-     * </ul>
-     */
+
     public List<String> buildSingleSongCommand(String url, String outputDir) {
         List<String> cmd = new ArrayList<>();
         cmd.add(binaryResolver.resolveYtDlpPath());

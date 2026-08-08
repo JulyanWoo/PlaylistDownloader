@@ -15,6 +15,7 @@ public class SongFile {
     private final String bitrate;
     private final String format;
     private String hash;         // Computed lazily in level 4
+    private LanguageInfo languageInfo;
 
     public SongFile(Path path, String fileName, String normalizedName, String title, String artist,
                     String album, long duration, long size, String bitrate, String format) {
@@ -28,6 +29,7 @@ public class SongFile {
         this.size = size;
         this.bitrate = bitrate;
         this.format = format;
+        this.languageInfo = LanguageInfo.unknown();
     }
 
     public Path getPath() {
@@ -76,5 +78,29 @@ public class SongFile {
 
     public void setHash(String hash) {
         this.hash = hash;
+    }
+
+    public LanguageInfo getLanguageInfo() {
+        return languageInfo;
+    }
+
+    public void setLanguageInfo(LanguageInfo languageInfo) {
+        this.languageInfo = languageInfo != null ? languageInfo : LanguageInfo.unknown();
+    }
+
+    public String getLanguage() {
+        return languageInfo.name();
+    }
+
+    public void setLanguage(String language) {
+        this.languageInfo = new LanguageInfo(languageInfo.code(), language != null ? language : "Desconocido", languageInfo.confidence(), System.currentTimeMillis());
+    }
+
+    public double getLanguageConfidence() {
+        return languageInfo.confidence();
+    }
+
+    public void setLanguageConfidence(double languageConfidence) {
+        this.languageInfo = new LanguageInfo(languageInfo.code(), languageInfo.name(), languageConfidence, System.currentTimeMillis());
     }
 }

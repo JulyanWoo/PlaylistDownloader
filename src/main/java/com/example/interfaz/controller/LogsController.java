@@ -97,10 +97,14 @@ public class LogsController implements Initializable {
             Text textNode = new Text(entry.getFormattedMessage() + "\n");
 
             switch (entry.getLevel()) {
-                case ERROR -> textNode.setFill(Color.web("#ff4d4d"));
-                case WARNING -> textNode.setFill(Color.web("#ffaa00"));
-                case SYSTEM -> textNode.setFill(Color.web("#bb86fc"));
-                case DEBUG -> textNode.setFill(Color.web("#a0a0b0"));
+                case ERROR ->
+                    textNode.setFill(Color.web("#ff4d4d"));
+                case WARNING ->
+                    textNode.setFill(Color.web("#ffaa00"));
+                case SYSTEM ->
+                    textNode.setFill(Color.web("#bb86fc"));
+                case DEBUG ->
+                    textNode.setFill(Color.web("#a0a0b0"));
                 case INFO -> {
                     String msg = entry.getMessage();
                     if (msg.contains("[ExtractAudio]")) {

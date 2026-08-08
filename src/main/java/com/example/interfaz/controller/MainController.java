@@ -24,7 +24,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-@SuppressWarnings({ "unused", "FXML" })
+@SuppressWarnings({"unused", "FXML"})
 public class MainController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
@@ -103,8 +103,9 @@ public class MainController {
                     downloadCoordinator.cancelDownload();
                     progressViewController.markDownloadCancelled();
                     progressViewController.togglePauseResumeButtons(false);
-                    if (queueViewController != null)
+                    if (queueViewController != null) {
                         queueViewController.setControlsEnabled(true);
+                    }
                 });
             }
 
@@ -119,20 +120,22 @@ public class MainController {
     }
 
     private void loadYtDlpVersion() {
-        if (ytDlpVersionLabel != null && ytDlpUpdateService != null) {
+        if (ytDlpUpdateService != null) {
             ytDlpUpdateService.checkUpdateAsync().thenAccept(info -> Platform.runLater(() -> {
                 this.lastUpdateInfo = info;
-                ytDlpVersionLabel.setText("Ver: " + info.getCurrentVersion());
+                if (ytDlpVersionLabel != null) {
+                    ytDlpVersionLabel.setText("Ver: " + info.getCurrentVersion());
+                }
                 if (info.isUpdateAvailable()) {
                     if (ytDlpStatusLabel != null) {
-                        ytDlpStatusLabel.setText("Estado: ⚡ Nueva v" + info.getLatestVersion());
+                        ytDlpStatusLabel.setText("Estado: Nueva v" + info.getLatestVersion());
                     }
                     if (updateYtDlpButton != null) {
                         updateYtDlpButton.setText("Actualizar ahora");
                     }
                 } else {
                     if (ytDlpStatusLabel != null) {
-                        ytDlpStatusLabel.setText("Estado: ✓ Al día");
+                        ytDlpStatusLabel.setText("Estado: Al día");
                     }
                     if (updateYtDlpButton != null) {
                         updateYtDlpButton.setText("Buscar actualización");
@@ -287,21 +290,21 @@ public class MainController {
         if (lastUpdateInfo != null && lastUpdateInfo.isUpdateAvailable()) {
             ytDlpUpdateService.updateYtDlpAsync(logLine -> LOGGER.info("[yt-dlp update UI] {}", logLine))
                     .thenAccept(success -> Platform.runLater(() -> {
-                        if (updateYtDlpButton != null) {
-                            updateYtDlpButton.setDisable(false);
-                        }
-                        loadYtDlpVersion();
-                        if (success) {
-                            dialogService.showConfirmation(
-                                "Actualización completada",
-                                "yt-dlp se ha actualizado correctamente.",
-                                "¿Deseas reiniciar la aplicación ahora para asegurar el uso del nuevo ejecutable?",
-                                Platform::exit
-                            );
-                        } else {
-                            dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
-                        }
-                    }));
+                if (updateYtDlpButton != null) {
+                    updateYtDlpButton.setDisable(false);
+                }
+                loadYtDlpVersion();
+                if (success) {
+                    dialogService.showConfirmation(
+                            "Actualización completada",
+                            "yt-dlp se ha actualizado correctamente.",
+                            "¿Deseas reiniciar la aplicación ahora para asegurar el uso del nuevo ejecutable?",
+                            Platform::exit
+                    );
+                } else {
+                    dialogService.showError("Error de Actualización", "No se pudo actualizar yt-dlp. Revisa los registros para más detalles.");
+                }
+            }));
         } else {
             ytDlpUpdateService.checkUpdateAsync(true).thenAccept(info -> Platform.runLater(() -> {
                 this.lastUpdateInfo = info;

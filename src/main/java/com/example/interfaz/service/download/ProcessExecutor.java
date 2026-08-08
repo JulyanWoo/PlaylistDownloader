@@ -21,31 +21,35 @@ import org.slf4j.LoggerFactory;
 /**
  * Wraps a child process (yt-dlp) with:
  * <ul>
- *   <li>Pause / resume / stop lifecycle.</li>
- *   <li>Inactivity watchdog: if no stdout line arrives for
- *       {@value #INACTIVITY_TIMEOUT_SECONDS} seconds the process is forcibly
- *       killed and the download is reported as failed — preventing thread freeze.</li>
+ * <li>Pause / resume / stop lifecycle.</li>
+ * <li>Inactivity watchdog: if no stdout line arrives for
+ * {@value #INACTIVITY_TIMEOUT_SECONDS} seconds the process is forcibly killed
+ * and the download is reported as failed — preventing thread freeze.</li>
  * </ul>
  */
 public class ProcessExecutor implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessExecutor.class);
 
-    /** Kill unresponsive yt-dlp after this many seconds of silence. */
+    /**
+     * Kill unresponsive yt-dlp after this many seconds of silence.
+     */
     private static final int INACTIVITY_TIMEOUT_SECONDS = 45;
 
     private final Object pauseLock = new Object();
-    private final AtomicBoolean isPaused  = new AtomicBoolean(false);
+    private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private final AtomicBoolean shouldStop = new AtomicBoolean(false);
 
-    /** Epoch-ms of the last line received from stdout. */
+    /**
+     * Epoch-ms of the last line received from stdout.
+     */
     private final AtomicLong lastActivityMs = new AtomicLong(0);
 
     private volatile Process currentProcess;
 
     public boolean execute(List<String> cmd,
-                           Consumer<String> lineProcessor,
-                           Consumer<String> logNotifier) throws IOException, InterruptedException {
+            Consumer<String> lineProcessor,
+            Consumer<String> logNotifier) throws IOException, InterruptedException {
 
         if (cmd == null || cmd.isEmpty() || cmd.stream().allMatch(String::isBlank)) {
             throw new IllegalArgumentException("Command cannot be empty");
@@ -61,7 +65,11 @@ public class ProcessExecutor implements AutoCloseable {
 
         Process process = null;
         ScheduledExecutorService watchdog = Executors.newSingleThreadScheduledExecutor(
-                r -> { Thread t = new Thread(r, "ProcessWatchdog"); t.setDaemon(true); return t; });
+                r -> {
+                    Thread t = new Thread(r, "ProcessWatchdog");
+                    t.setDaemon(true);
+                    return t;
+                });
         ScheduledFuture<?> watchdogFuture = null;
 
         try {
@@ -91,7 +99,9 @@ public class ProcessExecutor implements AutoCloseable {
                     shouldStop.set(true);
                     procRef.descendants().forEach(ProcessHandle::destroyForcibly);
                     procRef.destroyForcibly();
-                    synchronized (pauseLock) { pauseLock.notifyAll(); }
+                    synchronized (pauseLock) {
+                        pauseLock.notifyAll();
+                    }
                 }
             }, INACTIVITY_TIMEOUT_SECONDS, INACTIVITY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
@@ -105,7 +115,9 @@ public class ProcessExecutor implements AutoCloseable {
                     lastActivityMs.set(System.currentTimeMillis());
                     LOGGER.debug("[DIAG] stdout[{}]: {}", lineCount, line);
                     handlePauseState();
-                    if (shouldStop.get()) break;
+                    if (shouldStop.get()) {
+                        break;
+                    }
                     notifySafely(logNotifier, line);
                     notifySafely(lineProcessor, line);
                 }
@@ -141,22 +153,30 @@ public class ProcessExecutor implements AutoCloseable {
             return success;
 
         } finally {
-            if (watchdogFuture != null) watchdogFuture.cancel(false);
+            if (watchdogFuture != null) {
+                watchdogFuture.cancel(false);
+            }
             watchdog.shutdownNow();
             resetState(process);
         }
     }
 
     public void pause() {
-        if (!isAlive()) return;
+        if (!isAlive()) {
+            return;
+        }
         isPaused.set(true);
         LOGGER.info("Process paused");
     }
 
     public void resume() {
-        if (!isPaused.get()) return;
+        if (!isPaused.get()) {
+            return;
+        }
         isPaused.set(false);
-        synchronized (pauseLock) { pauseLock.notifyAll(); }
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
         LOGGER.info("Process resumed");
     }
 
@@ -164,16 +184,23 @@ public class ProcessExecutor implements AutoCloseable {
         Process proc;
         synchronized (this) {
             proc = this.currentProcess;
-            if (proc == null) return;
+            if (proc == null) {
+                return;
+            }
             this.shouldStop.set(true);
             this.isPaused.set(false);
         }
 
-        synchronized (pauseLock) { pauseLock.notifyAll(); }
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
 
         if (proc.isAlive()) {
-            try { proc.descendants().forEach(ProcessHandle::destroyForcibly); }
-            catch (Exception e) { LOGGER.warn("Error cancelling child processes: {}", e.getMessage()); }
+            try {
+                proc.descendants().forEach(ProcessHandle::destroyForcibly);
+            } catch (Exception e) {
+                LOGGER.warn("Error cancelling child processes: {}", e.getMessage());
+            }
             proc.destroyForcibly();
             try {
                 proc.onExit().get(2, TimeUnit.SECONDS);
@@ -183,7 +210,9 @@ public class ProcessExecutor implements AutoCloseable {
                 LOGGER.warn("Error waiting for process shutdown: {}", e.getMessage());
             }
             synchronized (this) {
-                if (this.currentProcess == proc) this.currentProcess = null;
+                if (this.currentProcess == proc) {
+                    this.currentProcess = null;
+                }
             }
         }
         LOGGER.info("Process stopped");
@@ -194,8 +223,13 @@ public class ProcessExecutor implements AutoCloseable {
         return proc != null && proc.isAlive();
     }
 
-    public boolean isPaused()   { return isPaused.get(); }
-    public boolean isStopping() { return shouldStop.get(); }
+    public boolean isPaused() {
+        return isPaused.get();
+    }
+
+    public boolean isStopping() {
+        return shouldStop.get();
+    }
 
     @Override
     public void close() {
@@ -204,7 +238,9 @@ public class ProcessExecutor implements AutoCloseable {
     }
 
     private void notifySafely(Consumer<String> consumer, String message) {
-        if (consumer == null) return;
+        if (consumer == null) {
+            return;
+        }
         try {
             consumer.accept(message);
         } catch (Exception e) {

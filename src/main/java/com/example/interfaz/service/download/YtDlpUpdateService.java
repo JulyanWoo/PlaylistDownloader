@@ -1,6 +1,7 @@
 package com.example.interfaz.service.download;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -64,7 +65,7 @@ public class YtDlpUpdateService {
                     return line.trim();
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             LOGGER.error("Error al obtener la versión de yt-dlp", e);
         }
         return "Desconocida";
@@ -94,7 +95,7 @@ public class YtDlpUpdateService {
     public CompletableFuture<Boolean> updateYtDlpAsync(Consumer<String> logCallback) {
         return CompletableFuture.supplyAsync(() -> {
             if (isDownloadActive()) {
-                notify(logCallback, "⚠️ No se puede actualizar yt-dlp mientras existen descargas activas en curso.");
+                notify(logCallback, "No se puede actualizar yt-dlp mientras existen descargas activas en curso.");
                 return false;
             }
 
@@ -115,14 +116,14 @@ public class YtDlpUpdateService {
 
             if (!success) {
                 // Strategy 2: Fallback to yt-dlp -U if direct binary update fails
-                notify(logCallback, "⚠️ Reemplazo directo falló, intentando respaldo con 'yt-dlp -U'...");
+                notify(logCallback, "Reemplazo directo falló, intentando respaldo con 'yt-dlp -U'...");
                 success = executeYtDlpSelfUpdate(ytDlpPath, logCallback);
             }
 
             if (success) {
-                notify(logCallback, "Etapa 4/4: ✓ Actualización completada correctamente.");
+                notify(logCallback, "Etapa 4/4: Actualización completada correctamente.");
             } else {
-                notify(logCallback, "❌ La actualización de yt-dlp no se pudo completar.");
+                notify(logCallback, "La actualización de yt-dlp no se pudo completar.");
             }
 
             updateHistory.recordUpdate(current, info.getLatestVersion(), success);
@@ -147,14 +148,14 @@ public class YtDlpUpdateService {
             int exitCode = process.waitFor();
             boolean ok = (exitCode == 0);
             if (ok) {
-                notify(logCallback, "✓ Respaldo 'yt-dlp -U' finalizó correctamente (Código 0).");
+                notify(logCallback, "Respaldo 'yt-dlp -U' finalizó correctamente (Código 0).");
             } else {
-                notify(logCallback, "❌ Respaldo 'yt-dlp -U' falló con código de salida: " + exitCode);
+                notify(logCallback, "Respaldo 'yt-dlp -U' falló con código de salida: " + exitCode);
             }
             return ok;
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             LOGGER.error("Fallo durante respaldo de actualización yt-dlp -U", e);
-            notify(logCallback, "❌ Excepción durante actualización: " + e.getMessage());
+            notify(logCallback, "Excepción durante actualización: " + e.getMessage());
             return false;
         }
     }

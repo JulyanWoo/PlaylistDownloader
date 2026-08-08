@@ -1,15 +1,5 @@
 package com.example.interfaz.service;
 
-import com.example.interfaz.exception.DownloadException;
-import com.example.interfaz.model.Song;
-import com.example.interfaz.service.download.BinaryResolver;
-import com.example.interfaz.service.download.ProcessExecutor;
-import com.example.interfaz.service.download.SongMetadataService;
-import com.example.interfaz.service.download.YtDlpCommandBuilder;
-import com.example.interfaz.util.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -18,6 +8,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.example.interfaz.exception.DownloadException;
+import com.example.interfaz.model.Song;
+import com.example.interfaz.service.download.BinaryResolver;
+import com.example.interfaz.service.download.ProcessExecutor;
+import com.example.interfaz.service.download.SongMetadataService;
+import com.example.interfaz.service.download.YtDlpCommandBuilder;
+import com.example.interfaz.util.FileUtils;
 
 public class YouTubeDownloadService implements DownloadService {
 

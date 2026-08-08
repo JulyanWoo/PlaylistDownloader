@@ -20,7 +20,9 @@ public class UpdateHistory {
     private static final String HISTORY_FILE_NAME = "update-history.json";
     private final Path historyFilePath;
 
-    public record Entry(String fromVersion, String toVersion, String timestamp, boolean success) {}
+    public record Entry(String fromVersion, String toVersion, String timestamp, boolean success) {
+
+    }
 
     public UpdateHistory() {
         this(Path.of(DEFAULT_CONFIG_DIR, HISTORY_FILE_NAME));
@@ -58,7 +60,7 @@ public class UpdateHistory {
                         Boolean.parseBoolean(matcher.group(4))
                 ));
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             LOGGER.warn("Error leyendo historial de actualizaciones desde {}: {}", historyFilePath, e.getMessage());
         }
         return entries;
@@ -89,13 +91,15 @@ public class UpdateHistory {
 
             Files.writeString(historyFilePath, sb.toString(), StandardCharsets.UTF_8);
             LOGGER.info("Historial de actualizaciones guardado en {}", historyFilePath);
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             LOGGER.error("No se pudo guardar el historial de actualizaciones en {}", historyFilePath, e);
         }
     }
 
     private String escapeJson(String input) {
-        if (input == null) return "";
+        if (input == null) {
+            return "";
+        }
         return input.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

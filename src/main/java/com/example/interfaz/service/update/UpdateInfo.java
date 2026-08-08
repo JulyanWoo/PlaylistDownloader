@@ -3,7 +3,8 @@ package com.example.interfaz.service.update;
 import java.time.LocalDateTime;
 
 /**
- * Encapsulates version status, update availability, download URL, and checksum URL for yt-dlp.
+ * Encapsulates version status, update availability, download URL, and checksum
+ * URL for yt-dlp.
  */
 public class UpdateInfo {
 

@@ -83,30 +83,19 @@
                </children>
             </VBox>
 
-            <!-- Tarjeta de yt-dlp Engine en Sidebar -->
-            <VBox styleClass="sidebar-config-card">
-               <children>
-                  <HBox alignment="CENTER_LEFT" spacing="6">
-                     <children>
-                        <FontIcon iconLiteral="mdi2c-cloud-download" iconSize="16" />
-                        <Label text="yt-dlp Engine" styleClass="card-title" />
-                     </children>
-                  </HBox>
-                  <Label fx:id="ytDlpStatusLabel" text="Estado: Comprobando..." styleClass="folder-path-text" wrapText="true" />
-                  <Label fx:id="ytDlpVersionLabel" text="Ver: Cargando..." styleClass="folder-path-text" wrapText="true" />
-                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" text="Buscar actualización" styleClass="button, sm">
-                     <graphic>
-                        <FontIcon iconLiteral="mdi2u-update" iconSize="14" />
-                     </graphic>
-                  </Button>
-               </children>
-            </VBox>
-
-            <!-- Cambiador de Tema en la parte inferior -->
-            <HBox alignment="CENTER_LEFT" spacing="10">
+            <!-- Cambiador de Tema y Control de yt-dlp en la parte inferior -->
+            <HBox alignment="CENTER_LEFT" spacing="8">
                <children>
                   <Label text="Tema visual" styleClass="folder-path-text" />
                   <Region HBox.hgrow="ALWAYS" />
+                  <Button fx:id="updateYtDlpButton" mnemonicParsing="false" onAction="#onUpdateYtDlp" styleClass="button, icon">
+                     <tooltip>
+                        <Tooltip text="Buscar actualización de yt-dlp" />
+                     </tooltip>
+                     <graphic>
+                        <FontIcon iconLiteral="mdi2u-update" iconSize="16" />
+                     </graphic>
+                  </Button>
                   <Button fx:id="themeToggleButton" mnemonicParsing="false" onAction="#onToggleTheme" styleClass="button, icon">
                      <tooltip>
                         <Tooltip text="Cambiar Tema Oscuro/Claro" />

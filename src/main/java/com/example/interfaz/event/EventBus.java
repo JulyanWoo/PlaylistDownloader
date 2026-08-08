@@ -62,6 +62,7 @@ public class EventBus implements EventPublisher {
             }
         });
     }
+
     @Override
     public void clear() {
         listeners.clear();
@@ -70,7 +71,9 @@ public class EventBus implements EventPublisher {
 
     @Override
     public int getListenerCount(Class<?> eventType) {
-        if (eventType == null) return 0;
+        if (eventType == null) {
+            return 0;
+        }
         CopyOnWriteArrayList<Consumer<Object>> eventListeners = listeners.get(eventType);
         return eventListeners != null ? eventListeners.size() : 0;
     }

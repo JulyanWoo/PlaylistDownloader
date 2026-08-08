@@ -139,12 +139,14 @@ public class QueueManager {
     }
 
     public synchronized String getQueueStatus() {
-        return String.format("Pendientes: %d, Descargando: %d, Completados: %d, Fallidos: %d", 
-                           downloadQueue.size(), processingUrls.size(), processedItems, failedItems);
+        return String.format("Pendientes: %d, Descargando: %d, Completados: %d, Fallidos: %d",
+                downloadQueue.size(), processingUrls.size(), processedItems, failedItems);
     }
 
     public synchronized boolean contains(String url) {
-        if (url == null) return false;
+        if (url == null) {
+            return false;
+        }
         String trimmed = url.trim();
         return queuedUrls.contains(trimmed) || processingUrls.contains(trimmed);
     }

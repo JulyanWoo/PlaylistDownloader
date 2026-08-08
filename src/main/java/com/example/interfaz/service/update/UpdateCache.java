@@ -47,7 +47,7 @@ public class UpdateCache {
             if (matcher.find()) {
                 return LocalDateTime.parse(matcher.group(1).trim(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException | java.time.format.DateTimeParseException e) {
             LOGGER.debug("No se pudo leer lastCheck desde {}: {}", configFilePath, e.getMessage());
         }
         return null;
@@ -70,14 +70,16 @@ public class UpdateCache {
             }
 
             return new UpdateInfo(currentVersion, lastVersion, updateAvailable, downloadUrl);
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             LOGGER.warn("Error leyendo cache de actualización desde {}: {}", configFilePath, e.getMessage());
             return null;
         }
     }
 
     public void saveCache(UpdateInfo info) {
-        if (info == null) return;
+        if (info == null) {
+            return;
+        }
         try {
             Path parent = configFilePath.getParent();
             if (parent != null && !Files.exists(parent)) {
@@ -101,7 +103,7 @@ public class UpdateCache {
 
             Files.writeString(configFilePath, json, StandardCharsets.UTF_8);
             LOGGER.info("Caché de actualización guardado en {}", configFilePath);
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             LOGGER.error("No se pudo guardar el caché de actualización en {}", configFilePath, e);
         }
     }
@@ -116,7 +118,9 @@ public class UpdateCache {
     }
 
     private String escapeJson(String input) {
-        if (input == null) return "";
+        if (input == null) {
+            return "";
+        }
         return input.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

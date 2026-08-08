@@ -63,7 +63,7 @@ public class HashValidator {
             if (response.statusCode() == 200) {
                 return parseHashFromSumsFile(response.body(), targetFileName);
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException | InterruptedException e) {
             LOGGER.warn("No se pudo descargar SHA256SUMS desde GitHub: {}", e.getMessage());
         }
         return "";
@@ -92,9 +92,9 @@ public class HashValidator {
         String computedHash = computeSha256(file);
         boolean matches = computedHash.equalsIgnoreCase(expectedHash);
         if (matches) {
-            LOGGER.info("✓ Hash SHA-256 verificado correctamente para {}: {}", file.getFileName(), computedHash);
+            LOGGER.info("Hash SHA-256 verificado correctamente para {}: {}", file.getFileName(), computedHash);
         } else {
-            LOGGER.error("❌ Mismatch de SHA-256 en {}. Calculado: {}, Esperado: {}", file.getFileName(), computedHash, expectedHash);
+            LOGGER.error("Mismatch de SHA-256 en {}. Calculado: {}, Esperado: {}", file.getFileName(), computedHash, expectedHash);
         }
         return matches;
     }

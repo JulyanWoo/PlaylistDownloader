@@ -16,6 +16,7 @@ public abstract class LibraryAnalyzerEvent {
     }
 
     public static class LibraryAnalysisStarted extends LibraryAnalyzerEvent {
+
         private final String folderPath;
 
         public LibraryAnalysisStarted(String folderPath) {
@@ -27,7 +28,27 @@ public abstract class LibraryAnalyzerEvent {
         }
     }
 
+    public static class LibraryAnalysisStageChanged extends LibraryAnalyzerEvent {
+
+        private final com.example.interfaz.model.analyzer.AnalysisStage stage;
+        private final String message;
+
+        public LibraryAnalysisStageChanged(com.example.interfaz.model.analyzer.AnalysisStage stage, String message) {
+            this.stage = stage;
+            this.message = message;
+        }
+
+        public com.example.interfaz.model.analyzer.AnalysisStage getStage() {
+            return stage;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
     public static class LibraryProgressUpdated extends LibraryAnalyzerEvent {
+
         private final long processedSongs;
         private final long totalFiles;
         private final long duplicatesFound;
@@ -36,7 +57,7 @@ public abstract class LibraryAnalyzerEvent {
         private final long estimatedRemainingMillis;
 
         public LibraryProgressUpdated(long processedSongs, long totalFiles, long duplicatesFound,
-                                      String statusText, long elapsedMillis, long estimatedRemainingMillis) {
+                String statusText, long elapsedMillis, long estimatedRemainingMillis) {
             this.processedSongs = processedSongs;
             this.totalFiles = totalFiles;
             this.duplicatesFound = duplicatesFound;
@@ -71,6 +92,7 @@ public abstract class LibraryAnalyzerEvent {
     }
 
     public static class DuplicateFound extends LibraryAnalyzerEvent {
+
         private final DuplicateGroup group;
 
         public DuplicateFound(DuplicateGroup group) {
@@ -83,6 +105,7 @@ public abstract class LibraryAnalyzerEvent {
     }
 
     public static class LibraryAnalysisFinished extends LibraryAnalyzerEvent {
+
         private final LibraryAnalysisResult result;
 
         public LibraryAnalysisFinished(LibraryAnalysisResult result) {
@@ -95,6 +118,7 @@ public abstract class LibraryAnalyzerEvent {
     }
 
     public static class LibraryAnalysisCancelled extends LibraryAnalyzerEvent {
+
         private final LibraryAnalysisResult partialResult;
 
         public LibraryAnalysisCancelled(LibraryAnalysisResult partialResult) {

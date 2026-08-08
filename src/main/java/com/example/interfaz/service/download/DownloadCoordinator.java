@@ -216,8 +216,9 @@ public class DownloadCoordinator implements AutoCloseable {
     }
 
     public void pauseDownload() {
-        if (!running.get())
+        if (!running.get()) {
             return;
+        }
         pause();
         downloadService.pauseDownload();
         publishEvent(new DownloadEvent.StateChanged(true, true));
@@ -225,8 +226,9 @@ public class DownloadCoordinator implements AutoCloseable {
     }
 
     public void resumeDownload() {
-        if (!running.get())
+        if (!running.get()) {
             return;
+        }
         resume();
         downloadService.resumeDownload();
         publishEvent(new DownloadEvent.StateChanged(true, false));
