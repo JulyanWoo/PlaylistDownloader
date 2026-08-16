@@ -28,7 +28,6 @@ public class ProgressManager {
     private Label activeSubtitleLabel;
     private ProgressBar activeProgressBar;
     private Label activeSpeedLabel;
-    private Label activeEtaLabel;
 
     private String currentSpeed = "0.0 MB/s";
     private String currentEta = "--:--";
@@ -136,7 +135,7 @@ public class ProgressManager {
                 activeProgressBar.setProgress(progress);
             }
             if (activeSpeedLabel != null) {
-                activeSpeedLabel.setText(String.format("%.0f%% • %s", progress * 100, currentSpeed));
+                activeSpeedLabel.setText(String.format("%.0f%%", progress * 100));
             }
         });
     }
@@ -168,18 +167,13 @@ public class ProgressManager {
         this.currentSpeed = speed;
         Platform.runLater(() -> {
             if (activeSpeedLabel != null) {
-                activeSpeedLabel.setText(String.format("%.0f%% • %s", currentProgressValue * 100, speed));
+                activeSpeedLabel.setText(String.format("%.0f%%", currentProgressValue * 100));
             }
         });
     }
 
     public void updateETA(String eta) {
         this.currentEta = eta;
-        Platform.runLater(() -> {
-            if (activeEtaLabel != null) {
-                activeEtaLabel.setText(eta + " restantes");
-            }
-        });
     }
 
     public void updateStatus(String status) {
@@ -240,7 +234,6 @@ public class ProgressManager {
             this.activeSubtitleLabel = elements.getSubtitleLabel();
             this.activeProgressBar = elements.getProgressBar();
             this.activeSpeedLabel = elements.getSpeedLabel();
-            this.activeEtaLabel = elements.getEtaLabel();
 
             if (isPrioritized) {
                 activeDownloadsContainer.getChildren().add(0, card);
@@ -257,6 +250,19 @@ public class ProgressManager {
             }
             VBox card = DownloadCardFactory.createWaitingCard(title, subtitle, urlOrTitle, this::handlePrioritizeItem);
             waitingDownloadsContainer.getChildren().add(card);
+        });
+    }
+
+    public void syncWaitingQueue(java.util.List<String> urls) {
+        Platform.runLater(() -> {
+            if (waitingDownloadsContainer == null) {
+                return;
+            }
+            waitingDownloadsContainer.getChildren().clear();
+            for (String url : urls) {
+                VBox card = DownloadCardFactory.createWaitingCard(url, "En cola", url, this::handlePrioritizeItem);
+                waitingDownloadsContainer.getChildren().add(card);
+            }
         });
     }
 
@@ -343,7 +349,6 @@ public class ProgressManager {
             activeSubtitleLabel = null;
             activeProgressBar = null;
             activeSpeedLabel = null;
-            activeEtaLabel = null;
         });
     }
 
