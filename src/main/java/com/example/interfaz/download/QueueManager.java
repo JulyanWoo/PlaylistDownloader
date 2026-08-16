@@ -166,6 +166,12 @@ public class QueueManager {
     }
 
     public synchronized List<String> getAllItems() {
+        List<String> allItems = new ArrayList<>(processingUrls);
+        allItems.addAll(downloadQueue);
+        return allItems;
+    }
+
+    public synchronized List<String> getPendingItems() {
         return new ArrayList<>(downloadQueue);
     }
 
