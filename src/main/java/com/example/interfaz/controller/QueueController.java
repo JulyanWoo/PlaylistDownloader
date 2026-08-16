@@ -99,11 +99,11 @@ public class QueueController {
         String normalizedInput = input.replaceAll("(?i)(https?://)", " $1").trim();
         String[] urls = normalizedInput.split("[\\s,]+");
         boolean addedAny = false;
-        
+
         for (String urlStr : urls) {
             String url = urlStr.trim();
             if (url.isEmpty()) continue;
-            
+
             if (!isValidUrl(url)) {
                 LOGGER.warn("URL inválida ignorada: {}", url);
                 continue;
@@ -115,14 +115,17 @@ public class QueueController {
             }
 
             if (queueManager.addToQueue(url)) {
-                Platform.runLater(() -> queueItems.add(url));
                 LOGGER.info("URL agregada a la cola: {}", url);
                 addedAny = true;
             }
         }
-        
+
         if (addedAny) {
             inputField.clear();
+            refreshQueue();
+            if (eventPublisher != null) {
+                eventPublisher.publish(new com.example.interfaz.event.DownloadEvent.QueueUpdated());
+            }
         } else {
             dialogService.showError("URL inválida", "Las URLs ingresadas no son válidas o ya están en la cola.");
         }

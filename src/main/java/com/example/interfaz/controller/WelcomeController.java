@@ -33,17 +33,30 @@ public class WelcomeController {
     @FXML
     void onWelcomeAddToQueue() {
         if (welcomeInputField == null) return;
-        String url = welcomeInputField.getText().trim();
-        if (url.isEmpty()) {
+        String input = welcomeInputField.getText().trim();
+        if (input.isEmpty()) {
             ServiceFactory.getInstance().getDialogService().showWarning("URL Vacía", "Por favor introduce una URL válida de YouTube.");
             return;
         }
 
+        String normalizedInput = input.replaceAll("(?i)(https?://)", " $1").trim();
+        String[] urls = normalizedInput.split("[\\s,]+");
         var downloadFacade = ServiceFactory.getInstance().getMainDownloadFacade();
-        boolean success = downloadFacade.addToQueue(url);
-        if (success) {
-            if (mainController != null && mainController.getProgressController() != null) {
-                mainController.getProgressController().addWaitingCard(url, "En cola");
+        boolean addedAny = false;
+
+        for (String urlStr : urls) {
+            String url = urlStr.trim();
+            if (url.isEmpty()) continue;
+            if (downloadFacade.addToQueue(url)) {
+                addedAny = true;
+                if (mainController != null && mainController.getProgressController() != null) {
+                    mainController.getProgressController().addWaitingCard(url, "En cola");
+                }
+            }
+        }
+
+        if (addedAny) {
+            if (mainController != null) {
                 mainController.onNavDownloads();
             }
             welcomeInputField.clear();
