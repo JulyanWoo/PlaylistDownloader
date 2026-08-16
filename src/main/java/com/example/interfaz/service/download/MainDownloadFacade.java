@@ -93,6 +93,12 @@ public class MainDownloadFacade implements AutoCloseable {
                 }
             }));
 
+            eventPublisher.subscribe(DownloadEvent.QueueUpdated.class, event -> Platform.runLater(() -> {
+                if (progressController != null) {
+                    progressController.syncWaitingQueue(ServiceFactory.getInstance().getQueueManager().getPendingItems());
+                }
+            }));
+
             eventPublisher.subscribe(DownloadEvent.DownloadStarted.class, event -> Platform.runLater(() -> {
                 if (progressController != null) {
                     progressController.showProgressSection();

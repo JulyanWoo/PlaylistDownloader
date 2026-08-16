@@ -204,6 +204,10 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
         progressManager.addWaitingCard(title, subtitle, urlOrTitle);
     }
 
+    public void syncWaitingQueue(java.util.List<String> urls) {
+        progressManager.syncWaitingQueue(urls);
+    }
+
     public void addCompletedCard(String title) {
         addCompletedCard(title, title);
     }

@@ -81,14 +81,7 @@ public class DownloadCardFactory {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button menuBtn = new Button();
-        menuBtn.getStyleClass().add("btn-dark-subtle");
-        menuBtn.setStyle("-fx-padding: 4 8;");
-        FontIcon dotsIcon = new FontIcon("mdi2d-dots-vertical");
-        dotsIcon.setIconSize(16);
-        menuBtn.setGraphic(dotsIcon);
-
-        topRow.getChildren().addAll(artBox, titleBox, spacer, menuBtn);
+        topRow.getChildren().addAll(artBox, titleBox, spacer);
 
         elements.progressBar = new ProgressBar(progress);
         elements.progressBar.setMaxWidth(Double.MAX_VALUE);
@@ -98,16 +91,14 @@ public class DownloadCardFactory {
         HBox metaRow = new HBox();
         metaRow.setAlignment(Pos.CENTER_LEFT);
 
-        elements.speedLabel = new Label(String.format("%.0f%% • %s", progress * 100, speed));
+        elements.speedLabel = new Label(String.format("%.0f%%", progress * 100));
         elements.speedLabel.getStyleClass().add("card-progress-text");
 
-        Region metaSpacer = new Region();
-        HBox.setHgrow(metaSpacer, Priority.ALWAYS);
+        elements.etaLabel = new Label();
+        elements.etaLabel.setVisible(false);
+        elements.etaLabel.setManaged(false);
 
-        elements.etaLabel = new Label(eta + " restantes");
-        elements.etaLabel.getStyleClass().add("card-progress-text");
-
-        metaRow.getChildren().addAll(elements.speedLabel, metaSpacer, elements.etaLabel);
+        metaRow.getChildren().add(elements.speedLabel);
 
         HBox actionRow = new HBox(8);
         actionRow.setAlignment(Pos.CENTER_LEFT);
@@ -124,7 +115,7 @@ public class DownloadCardFactory {
         Button cardCancelBtn = new Button("Cancelar");
         cardCancelBtn.getStyleClass().add("btn-card-cancel");
         Label cancelIcon = new Label("✕");
-        cancelIcon.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-font-weight: bold;");
+        cancelIcon.setStyle("-fx-text-fill: #ffffff; -fx-font-size: 12px; -fx-font-weight: bold;");
         cardCancelBtn.setGraphic(cancelIcon);
         if (onCancel != null) {
             cardCancelBtn.setOnAction(e -> onCancel.run());
@@ -177,14 +168,7 @@ public class DownloadCardFactory {
             cardPrioritizeBtn.setOnAction(e -> onPrioritize.accept(card, urlOrTitle));
         }
 
-        Button menuBtn = new Button();
-        menuBtn.getStyleClass().add("btn-dark-subtle");
-        menuBtn.setStyle("-fx-padding: 4 6;");
-        FontIcon dotsIcon = new FontIcon("mdi2d-dots-vertical");
-        dotsIcon.setIconSize(14);
-        menuBtn.setGraphic(dotsIcon);
-
-        topRow.getChildren().addAll(artBox, titleBox, spacer, cardPrioritizeBtn, menuBtn);
+        topRow.getChildren().addAll(artBox, titleBox, spacer, cardPrioritizeBtn);
         card.getChildren().add(topRow);
 
         return card;

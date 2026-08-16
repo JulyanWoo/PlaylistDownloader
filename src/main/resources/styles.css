@@ -1,17 +1,17 @@
 /* Estilos personalizados integrados con AtlantaFX Primer Dark */
 
 .main-layout {
-  -fx-background-color: #0f131a;
-  background-color: #0f131a;
+  -fx-background-color: -color-bg-default;
+  background-color: -color-bg-default;
 }
 
 /* Sidebar lateral */
 .sidebar {
-  -fx-background-color: #141822;
-  background-color: #141822;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
 
-  -fx-border-color: transparent #1e2433 transparent transparent;
-  border-color: transparent #1e2433 transparent transparent;
+  -fx-border-color: transparent -color-border-default transparent transparent;
+  border-color: transparent -color-border-default transparent transparent;
 
   -fx-border-width: 0 1 0 0;
   border-width: 0 1px 0 0;
@@ -39,9 +39,9 @@
   font-size: 15px;
   -fx-font-weight: bold;
   font-weight: bold;
-  -fx-text-fill: #ffffff;
-  fill: #ffffff;
-  color: #ffffff;
+  -fx-text-fill: -color-fg-default;
+  fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .sidebar-section-title {
@@ -49,8 +49,8 @@
   font-size: 10px;
   -fx-font-weight: bold;
   font-weight: bold;
-  -fx-text-fill: #6b7280;
-  color: #6b7280;
+  -fx-text-fill: -color-fg-subtle;
+  color: -color-fg-subtle;
   -fx-padding: 6 6 2 6;
   padding: 6px 6px 2px 6px;
 }
@@ -62,8 +62,8 @@
 .sidebar-btn {
   -fx-background-color: transparent;
   background-color: transparent;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
   -fx-alignment: center-left;
   -fx-padding: 9 12;
   padding: 9px 12px;
@@ -80,52 +80,52 @@
 }
 
 .sidebar-btn:hover {
-  -fx-background-color: #1e2536;
-  background-color: #1e2536;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .sidebar-btn.active {
-  -fx-background-color: #1d283a;
-  background-color: #1d283a;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
-  -fx-border-color: transparent transparent transparent #3b82f6;
-  border-color: transparent transparent transparent #3b82f6;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
+  -fx-border-color: transparent transparent transparent -color-accent-emphasis;
+  border-color: transparent transparent transparent -color-accent-emphasis;
   -fx-border-width: 0 0 0 3;
   border-width: 0 0 0 3px;
 }
 
 .sidebar-btn .font-icon {
-  -fx-icon-color: #9ca3af;
-  color: #9ca3af;
+  -fx-icon-color: -color-fg-muted;
+  color: -color-fg-muted;
 }
 
 .sidebar-btn:hover .font-icon {
-  -fx-icon-color: #ffffff;
-  color: #ffffff;
+  -fx-icon-color: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .sidebar-btn.active .font-icon {
-  -fx-icon-color: #3b82f6;
-  color: #3b82f6;
+  -fx-icon-color: -color-accent-emphasis;
+  color: -color-accent-emphasis;
 }
 
 /* Status Dot Badge */
 .status-dot {
-  -fx-fill: #10b981;
-  fill: #10b981;
+  -fx-fill: -color-success-emphasis;
+  fill: -color-success-emphasis;
   -fx-stroke: none;
   stroke: none;
 }
 
 /* Tarjeta de carpeta en Sidebar */
 .sidebar-config-card {
-  -fx-background-color: #181d2a;
-  background-color: #181d2a;
-  -fx-border-color: #242c3f;
-  border-color: #242c3f;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
   -fx-border-radius: 10;
   border-radius: 10px;
   -fx-background-radius: 10;
@@ -137,16 +137,16 @@
 .folder-path-text {
   -fx-font-size: 11px;
   font-size: 11px;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
 }
 
 /* Top bar search container */
 .search-pill-container {
-  -fx-background-color: #141822;
-  background-color: #141822;
-  -fx-border-color: #222a3c;
-  border-color: #222a3c;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
   -fx-border-radius: 24;
   border-radius: 24px;
   -fx-background-radius: 24;
@@ -159,18 +159,18 @@
   background-color: transparent;
   -fx-border-color: transparent;
   border-color: transparent;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
-  -fx-prompt-text-fill: #6b7280;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
+  -fx-prompt-text-fill: -color-fg-subtle;
   -fx-font-size: 13px;
   font-size: 13px;
 }
 
 .btn-pill-primary {
-  -fx-background-color: #3b82f6;
-  background-color: #3b82f6;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-accent-emphasis;
+  background-color: -color-accent-emphasis;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
   -fx-font-weight: bold;
   font-weight: bold;
   -fx-font-size: 12px;
@@ -184,15 +184,15 @@
 }
 
 .btn-pill-primary:hover {
-  -fx-background-color: #2563eb;
-  background-color: #2563eb;
+  -fx-background-color: -color-accent-emphasis;
+  background-color: -color-accent-emphasis;
 }
 
 .btn-pill-success {
-  -fx-background-color: #16a34a;
-  background-color: #16a34a;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-success-emphasis;
+  background-color: -color-success-emphasis;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
   -fx-font-weight: bold;
   font-weight: bold;
   -fx-font-size: 12px;
@@ -206,21 +206,21 @@
 }
 
 .btn-pill-success:hover {
-  -fx-background-color: #15803d;
-  background-color: #15803d;
+  -fx-background-color: -color-success-emphasis;
+  background-color: -color-success-emphasis;
 }
 
 /* Botones secundarios oscuros */
 .btn-dark-subtle {
-  -fx-background-color: #1f2738;
-  background-color: #1f2738;
-  -fx-border-color: #2d384e;
-  border-color: #2d384e;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
   -fx-border-radius: 8;
   border-radius: 8px;
   -fx-background-radius: 8;
-  -fx-text-fill: #d1d5db;
-  color: #d1d5db;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
   -fx-font-size: 12px;
   font-size: 12px;
   -fx-padding: 6 12;
@@ -230,10 +230,10 @@
 }
 
 .btn-dark-subtle:hover {
-  -fx-background-color: #2a344a;
-  background-color: #2a344a;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-bg-default;
+  background-color: -color-bg-default;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 /* Tabs de Filtro */
@@ -241,8 +241,8 @@
   -fx-spacing: 20;
   -fx-padding: 4 0 8 0;
   padding: 4px 0 8px 0;
-  -fx-border-color: transparent transparent #1f2738 transparent;
-  border-color: transparent transparent #1f2738 transparent;
+  -fx-border-color: transparent transparent -color-bg-inset transparent;
+  border-color: transparent transparent -color-bg-inset transparent;
   -fx-border-width: 0 0 1 0;
   border-width: 0 0 1px 0;
 }
@@ -250,8 +250,8 @@
 .filter-tab-btn {
   -fx-background-color: transparent;
   background-color: transparent;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
   -fx-font-size: 13px;
   font-size: 13px;
   -fx-font-weight: 600;
@@ -263,15 +263,15 @@
 }
 
 .filter-tab-btn:hover {
-  -fx-text-fill: #e5e7eb;
-  color: #e5e7eb;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .filter-tab-btn.active {
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
-  -fx-border-color: transparent transparent #3b82f6 transparent;
-  border-color: transparent transparent #3b82f6 transparent;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
+  -fx-border-color: transparent transparent -color-accent-emphasis transparent;
+  border-color: transparent transparent -color-accent-emphasis transparent;
   -fx-border-width: 0 0 2 0;
   border-width: 0 0 2px 0;
 }
@@ -282,15 +282,15 @@
   font-size: 15px;
   -fx-font-weight: bold;
   font-weight: bold;
-  -fx-text-fill: #f3f4f6;
-  color: #f3f4f6;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .download-card {
-  -fx-background-color: #161b26;
-  background-color: #161b26;
-  -fx-border-color: #222938;
-  border-color: #222938;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
   -fx-border-radius: 12;
   border-radius: 12px;
   -fx-background-radius: 12;
@@ -300,31 +300,31 @@
 }
 
 .download-card:hover {
-  -fx-border-color: #2e384d;
-  border-color: #2e384d;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
 }
 
 .download-card.active-card {
-  -fx-border-color: #3b82f6;
-  border-color: #3b82f6;
+  -fx-border-color: -color-accent-emphasis;
+  border-color: -color-accent-emphasis;
   -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.35), 12, 0, 0, 0);
 }
 
 .download-card.priority-active-card {
-  -fx-background-color: #11271f;
-  background-color: #11271f;
-  -fx-border-color: #10b981;
-  border-color: #10b981;
+  -fx-background-color: -color-success-muted;
+  background-color: -color-success-muted;
+  -fx-border-color: -color-success-emphasis;
+  border-color: -color-success-emphasis;
   -fx-border-width: 1.5px;
   border-width: 1.5px;
   -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.4), 14, 0, 0, 0);
 }
 
 .badge-priority {
-  -fx-background-color: #064e3b;
-  background-color: #064e3b;
-  -fx-text-fill: #34d399;
-  color: #34d399;
+  -fx-background-color: #10b981;
+  background-color: #10b981;
+  -fx-text-fill: #ffffff;
+  color: #ffffff;
   -fx-font-size: 10px;
   font-size: 10px;
   -fx-font-weight: bold;
@@ -336,8 +336,8 @@
 }
 
 .card-cover-art {
-  -fx-background-color: #242c3d;
-  background-color: #242c3d;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
   -fx-background-radius: 8;
   -fx-border-radius: 8;
   border-radius: 8px;
@@ -348,27 +348,27 @@
   font-size: 14px;
   -fx-font-weight: bold;
   font-weight: bold;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .card-subtitle-text {
   -fx-font-size: 12px;
   font-size: 12px;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
 }
 
 .card-progress-bar .bar {
-  -fx-background-color: linear-gradient(to right, #10b981, #22c55e);
-  background-color: linear-gradient(to right, #10b981, #22c55e);
+  -fx-background-color: linear-gradient(to right, -color-success-emphasis, -color-success-emphasis);
+  background-color: linear-gradient(to right, -color-success-emphasis, -color-success-emphasis);
   -fx-background-radius: 10;
   border-radius: 10px;
 }
 
 .card-progress-bar .track {
-  -fx-background-color: #1f2737;
-  background-color: #1f2737;
+  -fx-background-color: -color-border-default;
+  background-color: -color-border-default;
   -fx-background-radius: 10;
   border-radius: 10px;
 }
@@ -376,17 +376,17 @@
 .card-progress-text {
   -fx-font-size: 11px;
   font-size: 11px;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
   -fx-font-weight: 500;
   font-weight: 500;
 }
 
 .btn-card-small {
-  -fx-background-color: #1f2738;
-  background-color: #1f2738;
-  -fx-text-fill: #d1d5db;
-  color: #d1d5db;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
   -fx-font-size: 11px;
   font-size: 11px;
   -fx-padding: 5 10;
@@ -398,43 +398,45 @@
 }
 
 .btn-card-small:hover {
-  -fx-background-color: #2a354c;
-  background-color: #2a354c;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-bg-default;
+  background-color: -color-bg-default;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .btn-card-cancel {
-  -fx-background-color: #2a1d23;
-  background-color: #2a1d23;
-  -fx-text-fill: #fca5a5;
-  color: #fca5a5;
+  -fx-background-color: #dc2626;
+  background-color: #dc2626;
+  -fx-text-fill: #ffffff;
+  color: #ffffff;
   -fx-font-size: 11px;
   font-size: 11px;
+  -fx-font-weight: bold;
+  font-weight: bold;
   -fx-padding: 5 10;
   padding: 5px 10px;
   -fx-background-radius: 6;
   border-radius: 6px;
-  -fx-border-color: #4a2931;
-  border-color: #4a2931;
+  -fx-border-color: #dc2626;
+  border-color: #dc2626;
   -fx-border-radius: 6;
   -fx-cursor: hand;
   cursor: pointer;
 }
 
 .btn-card-cancel:hover {
-  -fx-background-color: #3a2028;
-  background-color: #3a2028;
-  -fx-border-color: #ef4444;
-  border-color: #ef4444;
+  -fx-background-color: #b91c1c;
+  background-color: #b91c1c;
+  -fx-border-color: #b91c1c;
+  border-color: #b91c1c;
 }
 
 /* Badges e indicadores */
 .badge-in-queue {
   -fx-background-color: #1e293b;
   background-color: #1e293b;
-  -fx-text-fill: #94a3b8;
-  color: #94a3b8;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
   -fx-padding: 2 8;
   padding: 2px 8px;
   -fx-background-radius: 4;
@@ -444,8 +446,8 @@
 }
 
 .badge-completed {
-  -fx-text-fill: #10b981;
-  color: #10b981;
+  -fx-text-fill: -color-success-emphasis;
+  color: -color-success-emphasis;
   -fx-font-size: 12px;
   font-size: 12px;
   -fx-font-weight: 600;
@@ -467,8 +469,8 @@
   font-size: 22px;
   -fx-font-weight: 800;
   font-weight: 800;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .hero-title {
@@ -476,20 +478,20 @@
   font-size: 32px;
   -fx-font-weight: 800;
   font-weight: 800;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .hero-subtitle {
   -fx-font-size: 14px;
   font-size: 14px;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
 }
 
 .hero-search-pill-container {
-  -fx-background-color: #141926;
-  background-color: #141926;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
   -fx-border-color: #242f45;
   border-color: #242f45;
   -fx-border-radius: 30;
@@ -501,13 +503,13 @@
 }
 
 .hero-search-pill-container:focused-within {
-  -fx-border-color: #3b82f6;
-  border-color: #3b82f6;
+  -fx-border-color: -color-accent-emphasis;
+  border-color: -color-accent-emphasis;
   -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.35), 20, 0, 0, 2);
 }
 
 .hero-youtube-icon {
-  -fx-icon-color: #ef4444;
+  -fx-icon-color: -color-danger-emphasis;
 }
 
 .hero-search-input {
@@ -515,9 +517,9 @@
   background-color: transparent;
   -fx-border-color: transparent;
   border-color: transparent;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
-  -fx-prompt-text-fill: #6b7280;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
+  -fx-prompt-text-fill: -color-fg-subtle;
   -fx-font-size: 15px;
   font-size: 15px;
 }
@@ -528,15 +530,15 @@
 }
 
 .quick-chip-btn {
-  -fx-background-color: #181f2f;
-  background-color: #181f2f;
-  -fx-border-color: #263147;
-  border-color: #263147;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-border-color: -color-border-default;
+  border-color: -color-border-default;
   -fx-border-radius: 20;
   border-radius: 20px;
   -fx-background-radius: 20;
-  -fx-text-fill: #cbd5e1;
-  color: #cbd5e1;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
   -fx-font-size: 12px;
   font-size: 12px;
   -fx-padding: 8 16;
@@ -546,12 +548,12 @@
 }
 
 .quick-chip-btn:hover {
-  -fx-background-color: #222d45;
-  background-color: #222d45;
-  -fx-border-color: #3b82f6;
-  border-color: #3b82f6;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-bg-default;
+  background-color: -color-bg-default;
+  -fx-border-color: -color-accent-emphasis;
+  border-color: -color-accent-emphasis;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 /* ==========================================================================
@@ -559,10 +561,10 @@
    ========================================================================== */
 
 .custom-title-bar {
-  -fx-background-color: #141822;
-  background-color: #141822;
-  -fx-border-color: transparent transparent #1d2433 transparent;
-  border-color: transparent transparent #1d2433 transparent;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
+  -fx-border-color: transparent transparent -color-border-default transparent;
+  border-color: transparent transparent -color-border-default transparent;
   -fx-border-width: 0 0 1 0;
   border-width: 0 0 1px 0;
   -fx-min-height: 34px;
@@ -575,15 +577,15 @@
   font-size: 12px;
   -fx-font-weight: 600;
   font-weight: 600;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
 }
 
 .title-bar-btn {
   -fx-background-color: transparent;
   background-color: transparent;
-  -fx-text-fill: #9ca3af;
-  color: #9ca3af;
+  -fx-text-fill: -color-fg-muted;
+  color: -color-fg-muted;
   -fx-padding: 6 12;
   padding: 6px 12px;
   -fx-background-radius: 0;
@@ -595,17 +597,17 @@
 }
 
 .title-bar-btn:hover {
-  -fx-background-color: #1f2738;
-  background-color: #1f2738;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-bg-inset;
+  background-color: -color-bg-inset;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 .title-bar-btn.close-btn:hover {
-  -fx-background-color: #dc2626;
-  background-color: #dc2626;
-  -fx-text-fill: #ffffff;
-  color: #ffffff;
+  -fx-background-color: -color-danger-emphasis;
+  background-color: -color-danger-emphasis;
+  -fx-text-fill: -color-fg-default;
+  color: -color-fg-default;
 }
 
 /* ==========================================================================
@@ -613,41 +615,41 @@
    ========================================================================== */
 
 .tree-table-row-cell.analyzer-group-row {
-  -fx-background-color: #1a2233;
-  background-color: #1a2233;
+  -fx-background-color: -color-bg-subtle;
+  background-color: -color-bg-subtle;
   -fx-font-weight: bold;
   font-weight: bold;
-  -fx-border-color: transparent transparent #29354c transparent;
-  border-color: transparent transparent #29354c transparent;
+  -fx-border-color: transparent transparent -color-border-default transparent;
+  border-color: transparent transparent -color-border-default transparent;
   -fx-border-width: 0 0 2 0;
   border-width: 0 0 2px 0;
 }
 
 .tree-table-row-cell.analyzer-group-row .tree-table-cell {
-  -fx-text-fill: #60a5fa;
-  color: #60a5fa;
+  -fx-text-fill: -color-accent-emphasis;
+  color: -color-accent-emphasis;
   -fx-font-weight: bold;
   font-weight: bold;
 }
 
 .tree-table-row-cell.analyzer-original-row {
-  -fx-background-color: #0e221b;
-  background-color: #0e221b;
+  -fx-background-color: -color-success-muted;
+  background-color: -color-success-muted;
 }
 
 .tree-table-row-cell.analyzer-original-row .tree-table-cell {
-  -fx-text-fill: #34d399;
-  color: #34d399;
+  -fx-text-fill: -color-success-emphasis;
+  color: -color-success-emphasis;
 }
 
 .tree-table-row-cell.analyzer-deletion-row {
-  -fx-background-color: #241419;
-  background-color: #241419;
+  -fx-background-color: -color-danger-muted;
+  background-color: -color-danger-muted;
 }
 
 .tree-table-row-cell.analyzer-deletion-row .tree-table-cell {
-  -fx-text-fill: #f87171;
-  color: #f87171;
+  -fx-text-fill: -color-danger-emphasis;
+  color: -color-danger-emphasis;
 }
 
 .titled-pane:expanded {
