@@ -87,9 +87,11 @@ public class WindowStageDecorator {
     public void closeWindow() {
         if (stage != null) {
             stage.fireEvent(new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST));
-        } else {
-            Platform.exit();
+            stage.close();
         }
+        com.example.interfaz.factory.ServiceFactory.getInstance().shutdown();
+        Platform.exit();
+        System.exit(0);
     }
 
     private void setupTitleBarDragAndControls() {

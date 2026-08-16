@@ -36,6 +36,10 @@ public class DialogService {
         });
     }
 
+    public void showConfirmation(String title, String contentText, Runnable onConfirm) {
+        showConfirmation(title, null, contentText, onConfirm);
+    }
+
     public void showConfirmation(String title, String headerText, String contentText, Runnable onConfirm) {
         runOnFxThread(() -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
