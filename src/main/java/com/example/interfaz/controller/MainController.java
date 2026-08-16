@@ -149,14 +149,25 @@ public class MainController implements AutoCloseable {
         if (inputField == null) {
             return;
         }
-        String url = inputField.getText().trim();
-        if (url.isEmpty()) {
+        String input = inputField.getText().trim();
+        if (input.isEmpty()) {
             uiFacade.getDialogService().showWarning("URL Vacía", "Por favor introduce una URL válida de YouTube.");
             return;
         }
 
-        boolean success = downloadFacade.addToQueue(url);
-        if (success) {
+        String normalizedInput = input.replaceAll("(?i)(https?://)", " $1").trim();
+        String[] urls = normalizedInput.split("[\\s,]+");
+        boolean addedAny = false;
+
+        for (String urlStr : urls) {
+            String url = urlStr.trim();
+            if (url.isEmpty()) continue;
+            if (downloadFacade.addToQueue(url)) {
+                addedAny = true;
+            }
+        }
+
+        if (addedAny) {
             inputField.clear();
         } else {
             uiFacade.getDialogService().showError("Error al encolar", "No se pudo encolar la descarga. Verifica la URL o la configuración.");
