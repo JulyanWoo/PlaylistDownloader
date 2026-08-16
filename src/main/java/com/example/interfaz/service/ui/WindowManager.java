@@ -71,6 +71,14 @@ public class WindowManager {
             stageDecorator.closeWindow();
         } else if (primaryStage != null) {
             primaryStage.fireEvent(new javafx.stage.WindowEvent(primaryStage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST));
+            primaryStage.close();
+            com.example.interfaz.factory.ServiceFactory.getInstance().shutdown();
+            javafx.application.Platform.exit();
+            System.exit(0);
+        } else {
+            com.example.interfaz.factory.ServiceFactory.getInstance().shutdown();
+            javafx.application.Platform.exit();
+            System.exit(0);
         }
     }
 

@@ -91,7 +91,18 @@ public class ProgressManager {
     }
 
     public void handleCancelDownload() {
-        if (cancelAction != null) {
+        com.example.interfaz.service.ui.DialogService dialogService = ServiceFactory.getInstance().getDialogService();
+        if (dialogService != null) {
+            dialogService.showConfirmation(
+                "Confirmar cancelación",
+                "¿Estás seguro de cancelar? Se detendrá la descarga actual y todos los elementos en la lista de espera serán eliminados.",
+                () -> {
+                    if (cancelAction != null) {
+                        cancelAction.run();
+                    }
+                }
+            );
+        } else if (cancelAction != null) {
             cancelAction.run();
         }
     }

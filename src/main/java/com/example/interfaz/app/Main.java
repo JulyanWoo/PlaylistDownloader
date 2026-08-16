@@ -44,10 +44,22 @@ public class Main extends Application {
             stage.setMinHeight(400);
             stage.show();
 
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    ServiceFactory.getInstance().shutdown();
+                } catch (Exception ignored) {
+                }
+            }, "PlaylistDownloader-ShutdownHook"));
+
             stage.setOnCloseRequest(event -> {
                 LogService.log("Aplicación cerrada por el usuario");
-                ServiceFactory.getInstance().shutdown();
+                try {
+                    ServiceFactory.getInstance().shutdown();
+                } catch (Exception e) {
+                    System.err.println("Error en shutdown: " + e.getMessage());
+                }
                 LogService.getInstance().stopCapturing();
+                javafx.application.Platform.exit();
                 System.exit(0);
             });
 
