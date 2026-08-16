@@ -19,6 +19,29 @@ class YtDlpCommandBuilderTest {
     }
 
     @Test
+    void testBuildRawAudioDownloadCommand() {
+        YtDlpCommandBuilder builder = new YtDlpCommandBuilder();
+        List<String> cmd = builder.buildRawAudioDownloadCommand("https://www.youtube.com/watch?v=test", "C:\\Temp");
+
+        assertNotNull(cmd);
+        assertTrue(cmd.contains("-f"));
+        assertTrue(cmd.contains("bestaudio/best"));
+        assertFalse(cmd.contains("-x"));
+        assertFalse(cmd.contains("mp3"));
+        assertTrue(cmd.contains("https://www.youtube.com/watch?v=test"));
+        assertTrue(cmd.stream().anyMatch(arg -> arg.contains("raw_%(id)s___%(title)s.%(ext)s")));
+    }
+
+    @Test
+    void testBuildRawAudioDownloadCommandWithCustomBaseName() {
+        YtDlpCommandBuilder builder = new YtDlpCommandBuilder();
+        List<String> cmd = builder.buildRawAudioDownloadCommand("https://www.youtube.com/watch?v=test", "C:\\Temp", "custom_base");
+
+        assertNotNull(cmd);
+        assertTrue(cmd.stream().anyMatch(arg -> arg.contains("custom_base.%(ext)s")));
+    }
+
+    @Test
     void testBuildPlaylistCommand() {
         YtDlpCommandBuilder builder = new YtDlpCommandBuilder();
         List<String> cmd = builder.buildPlaylistCommand("https://www.youtube.com/playlist?list=test", "C:\\Music", 3);

@@ -182,4 +182,208 @@ class DownloadCoordinatorTest {
             assertNotNull(assertThrows(IllegalStateException.class, () -> coordinator.addToQueue("https://youtube.com/watch?v=1")));
         }
     }
+
+    @Test
+    void testPipelineModeExecution(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        EventBus eventBus = new EventBus();
+        QueueManager queueManager = new QueueManager();
+
+        java.io.File mockRaw = new java.io.File(tempDir, "mock.webm");
+        java.nio.file.Files.writeString(mockRaw.toPath(), "raw-stream");
+
+        YouTubeDownloadService mockYtService = new YouTubeDownloadService() {
+            @Override
+            public boolean canHandle(String url) { return true; }
+            @Override
+            public Song getSongInfo(String url) { Song s = new Song(); s.setTitle("Pipeline Song"); s.setUrl(url); return s; }
+            @Override
+            public boolean downloadRawAudioStreaming(String url, String stagingDir, java.util.function.Consumer<java.io.File> onFileCompleted) {
+                if (onFileCompleted != null) {
+                    onFileCompleted.accept(mockRaw);
+                }
+                return true;
+            }
+            @Override
+            public void close() {}
+        };
+
+        AudioConversionService mockAudioService = new AudioConversionService() {
+            @Override
+            public CompletableFuture<java.io.File> convertToMp3(java.io.File rawAudioFile, java.io.File targetMp3File, java.util.function.Consumer<String> statusCallback) {
+                try {
+                    java.nio.file.Files.writeString(targetMp3File.toPath(), "mp3-content");
+                } catch (java.io.IOException ignored) {}
+                return CompletableFuture.completedFuture(targetMp3File);
+            }
+            @Override
+            public void close() {}
+        };
+
+        AtomicBoolean completed = new AtomicBoolean(false);
+        eventBus.subscribe(DownloadEvent.DownloadCompleted.class, e -> completed.set(true));
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(mockYtService, queueManager, eventBus, mockAudioService)) {
+            coordinator.addToQueue("https://www.youtube.com/watch?v=testpipe");
+            coordinator.startDownload();
+
+            Thread.sleep(500);
+            assertTrue(completed.get(), "El pipeline debe completar la descarga y conversión");
+            assertEquals(1, queueManager.getProcessedCount());
+        }
+    }
+
+    @Test
+    void testPipelineModeConversionFailure(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        EventBus eventBus = new EventBus();
+        QueueManager queueManager = new QueueManager();
+
+        java.io.File mockRaw = new java.io.File(tempDir, "mock_fail.webm");
+        java.nio.file.Files.writeString(mockRaw.toPath(), "raw-stream");
+
+        YouTubeDownloadService mockYtService = new YouTubeDownloadService() {
+            @Override
+            public boolean canHandle(String url) { return true; }
+            @Override
+            public Song getSongInfo(String url) { Song s = new Song(); s.setTitle("Fail Song"); s.setUrl(url); return s; }
+            @Override
+            public boolean downloadRawAudioStreaming(String url, String stagingDir, java.util.function.Consumer<java.io.File> onFileCompleted) {
+                if (onFileCompleted != null) {
+                    onFileCompleted.accept(mockRaw);
+                }
+                return true;
+            }
+            @Override
+            public void close() {}
+        };
+
+        AudioConversionService failingAudioService = new AudioConversionService() {
+            @Override
+            public CompletableFuture<java.io.File> convertToMp3(java.io.File rawAudioFile, java.io.File targetMp3File, java.util.function.Consumer<String> statusCallback) {
+                return CompletableFuture.failedFuture(new RuntimeException("FFmpeg transcode error"));
+            }
+            @Override
+            public void close() {}
+        };
+
+        AtomicBoolean failed = new AtomicBoolean(false);
+        eventBus.subscribe(DownloadEvent.DownloadFailed.class, e -> failed.set(true));
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(mockYtService, queueManager, eventBus, failingAudioService)) {
+            coordinator.addToQueue("https://www.youtube.com/watch?v=testfail");
+            coordinator.startDownload();
+
+            Thread.sleep(500);
+            assertTrue(failed.get(), "El pipeline debe notificar fallo cuando la conversión falla");
+            assertEquals(1, queueManager.getFailedCount());
+        }
+    }
+
+    @Test
+    void testResolveTrackTitleFromRawFileName() {
+        DownloadService downloadService = new YouTubeDownloadService();
+        QueueManager queueManager = new QueueManager();
+        EventBus eventBus = new EventBus();
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus)) {
+            Song fallbackSong = new Song();
+            fallbackSong.setTitle("Main Playlist Card Title");
+
+            // Standard format: raw_ID___Title.ext
+            java.io.File file1 = new java.io.File("raw_BuHuChdwJhg___Joaquin Guiller - No Sufriré Por Nadie.mp4");
+            assertEquals("Joaquin Guiller - No Sufriré Por Nadie", coordinator.resolveTrackTitle(file1, fallbackSong));
+
+            java.io.File file2 = new java.io.File("raw_yYFDRukciSY___La Aventura - Jhon Alex Castaño.webm");
+            assertEquals("La Aventura - Jhon Alex Castaño", coordinator.resolveTrackTitle(file2, fallbackSong));
+
+            // Legacy format with no separator: raw_ID.ext -> falls back to Song title
+            java.io.File fileLegacy = new java.io.File("raw_Fs_BnnaEUts.m4a");
+            assertEquals("Main Playlist Card Title", coordinator.resolveTrackTitle(fileLegacy, fallbackSong));
+
+            // Legacy format with no separator and null fallback -> uses ID
+            java.io.File fileLegacyNoSong = new java.io.File("raw_Fs_BnnaEUts.m4a");
+            assertEquals("Fs_BnnaEUts", coordinator.resolveTrackTitle(fileLegacyNoSong, null));
+        }
+    }
+
+    @Test
+    void testSanitizeFilenameHandling() {
+        DownloadService downloadService = new YouTubeDownloadService();
+        QueueManager queueManager = new QueueManager();
+        EventBus eventBus = new EventBus();
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus)) {
+            assertEquals("Song_ Title _Remix_", coordinator.sanitizeFilename("Song: Title /Remix?"));
+            assertEquals("Clean Name", coordinator.sanitizeFilename("Clean Name...   "));
+            assertNotNull(coordinator.sanitizeFilename(null));
+        }
+    }
+
+    @Test
+    void testPipelineMultipleTracksInPlaylistHaveDistinctTitles(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        EventBus eventBus = new EventBus();
+        QueueManager queueManager = new QueueManager();
+
+        java.io.File raw1 = new java.io.File(tempDir, "raw_BuHuChdwJhg___Song One.webm");
+        java.io.File raw2 = new java.io.File(tempDir, "raw_yYFDRukciSY___Song Two.webm");
+        java.nio.file.Files.writeString(raw1.toPath(), "raw1");
+        java.nio.file.Files.writeString(raw2.toPath(), "raw2");
+
+        YouTubeDownloadService mockYtService = new YouTubeDownloadService() {
+            @Override
+            public boolean canHandle(String url) { return true; }
+            @Override
+            public Song getSongInfo(String url) {
+                Song s = new Song();
+                s.setTitle("Playlist First Song");
+                s.setUrl(url);
+                return s;
+            }
+            @Override
+            public boolean downloadRawAudioStreaming(String url, String stagingDir, java.util.function.Consumer<java.io.File> onFileCompleted) {
+                if (onFileCompleted != null) {
+                    onFileCompleted.accept(raw1);
+                    onFileCompleted.accept(raw2);
+                }
+                return true;
+            }
+            @Override
+            public void close() {}
+        };
+
+        java.util.List<String> convertedFiles = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        java.util.List<String> completedTitles = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+        AudioConversionService mockAudioService = new AudioConversionService() {
+            @Override
+            public CompletableFuture<java.io.File> convertToMp3(java.io.File rawAudioFile, java.io.File targetMp3File, java.util.function.Consumer<String> statusCallback) {
+                convertedFiles.add(targetMp3File.getName());
+                try {
+                    java.nio.file.Files.writeString(targetMp3File.toPath(), "mp3");
+                } catch (java.io.IOException ignored) {}
+                return CompletableFuture.completedFuture(targetMp3File);
+            }
+            @Override
+            public void close() {}
+        };
+
+        eventBus.subscribe(DownloadEvent.DownloadCompleted.class, e -> {
+            if (e.getSong() != null) {
+                completedTitles.add(e.getSong().getTitle());
+            }
+        });
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(mockYtService, queueManager, eventBus, mockAudioService)) {
+            coordinator.addToQueue("https://www.youtube.com/playlist?list=PLtest");
+            coordinator.startDownload();
+
+            Thread.sleep(600);
+
+            assertTrue(convertedFiles.contains("Song One.mp3"), "Debe haber convertido Song One.mp3");
+            assertTrue(convertedFiles.contains("Song Two.mp3"), "Debe haber convertido Song Two.mp3");
+            assertNotEquals(convertedFiles.get(0), convertedFiles.get(1), "Los dos archivos MP3 convertidos deben tener nombres distintos");
+
+            assertTrue(completedTitles.contains("Song One"));
+            assertTrue(completedTitles.contains("Song Two"));
+        }
+    }
 }

@@ -18,6 +18,32 @@ public class YtDlpCommandBuilder {
     }
 
 
+    public List<String> buildRawAudioDownloadCommand(String url, String stagingDir, String baseName) {
+        List<String> cmd = new ArrayList<>();
+        String ytdlpPath = binaryResolver.resolveYtDlpPath();
+        cmd.add(ytdlpPath);
+        cmd.add("-f");
+        cmd.add("bestaudio/best");
+        cmd.add("--newline");
+        cmd.add("--socket-timeout");
+        cmd.add("15");
+        cmd.add("--extractor-args");
+        cmd.add("youtube:player_client=android,web");
+        cmd.add("-o");
+        if (baseName != null && !baseName.isBlank()) {
+            cmd.add(stagingDir + File.separator + baseName + ".%(ext)s");
+        } else {
+            cmd.add(stagingDir + File.separator + "raw_%(id)s___%(title)s.%(ext)s");
+        }
+        cmd.add("--no-overwrites");
+        cmd.add(url);
+        return cmd;
+    }
+
+    public List<String> buildRawAudioDownloadCommand(String url, String stagingDir) {
+        return buildRawAudioDownloadCommand(url, stagingDir, null);
+    }
+
     public List<String> buildSingleSongCommand(String url, String outputDir) {
         List<String> cmd = new ArrayList<>();
         String ytdlpPath = binaryResolver.resolveYtDlpPath();
