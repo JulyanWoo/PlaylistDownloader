@@ -48,6 +48,7 @@ public class ServiceFactory {
     private DuplicateDetectionService duplicateDetectionService;
     private LibraryAnalyzerService libraryAnalyzerService;
     private com.example.interfaz.service.download.YtDlpUpdateService ytDlpUpdateService;
+    private com.example.interfaz.service.download.AudioConversionService audioConversionService;
 
     public ServiceFactory() {
     }
@@ -218,6 +219,13 @@ public class ServiceFactory {
         return ytDlpUpdateService;
     }
 
+    public com.example.interfaz.service.download.AudioConversionService getAudioConversionService() {
+        if (audioConversionService == null) {
+            audioConversionService = new com.example.interfaz.service.download.AudioConversionService();
+        }
+        return audioConversionService;
+    }
+
     private com.example.interfaz.service.analyzer.DuplicateSelectionService duplicateSelectionService;
     private com.example.interfaz.service.analyzer.DuplicateManagementService duplicateManagementService;
     private com.example.interfaz.service.ui.analyzer.AnalyzerTableConfigurator analyzerTableConfigurator;
@@ -355,6 +363,17 @@ public class ServiceFactory {
             }
         }
 
+        if (audioConversionService != null) {
+            try {
+                audioConversionService.close();
+                LOGGER.info("AudioConversionService liberado correctamente en ServiceFactory.shutdown()");
+            } catch (Exception e) {
+                LOGGER.error("Error al cerrar AudioConversionService en shutdown", e);
+            } finally {
+                audioConversionService = null;
+            }
+        }
+
         if (downloadService != null) {
             try {
                 downloadService.close();
@@ -366,6 +385,7 @@ public class ServiceFactory {
             }
         }
         downloadService = null;
+        audioConversionService = null;
         eventPublisher = null;
         filterService = null;
         navigationService = null;

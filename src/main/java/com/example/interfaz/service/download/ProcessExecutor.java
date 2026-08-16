@@ -197,12 +197,7 @@ public class ProcessExecutor implements AutoCloseable {
         }
 
         if (proc.isAlive()) {
-            try {
-                proc.descendants().forEach(ProcessHandle::destroyForcibly);
-            } catch (Exception e) {
-                LOGGER.warn("Error cancelling child processes: {}", e.getMessage());
-            }
-            proc.destroyForcibly();
+            killProcessTree(proc);
             try {
                 proc.onExit().get(2, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -217,6 +212,32 @@ public class ProcessExecutor implements AutoCloseable {
             }
         }
         LOGGER.info("Process stopped");
+    }
+
+    public static void killProcessTree(Process proc) {
+        if (proc == null) {
+            return;
+        }
+        long pid = proc.pid();
+        try {
+            proc.descendants().forEach(ProcessHandle::destroyForcibly);
+        } catch (Exception ignored) {
+        }
+        try {
+            proc.destroyForcibly();
+        } catch (Exception ignored) {
+        }
+
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win") && pid > 0) {
+            try {
+                new ProcessBuilder("taskkill", "/F", "/T", "/PID", String.valueOf(pid))
+                        .redirectErrorStream(true)
+                        .start()
+                        .waitFor(2, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public boolean isAlive() {
