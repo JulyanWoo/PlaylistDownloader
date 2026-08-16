@@ -1,10 +1,17 @@
 package com.example.interfaz.service.download;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -15,6 +22,8 @@ import com.example.interfaz.event.DownloadEvent;
 import com.example.interfaz.event.EventPublisher;
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.DownloadService;
+import com.example.interfaz.service.YouTubeDownloadService;
+import com.example.interfaz.util.FileUtils;
 
 public class DownloadCoordinator implements AutoCloseable {
 
@@ -23,11 +32,13 @@ public class DownloadCoordinator implements AutoCloseable {
     private final DownloadService downloadService;
     private final QueueManager queueManager;
     private final EventPublisher eventPublisher;
+    private final AudioConversionService audioConversionService;
     private final ExecutorService executor;
 
     private final AtomicReference<Future<?>> currentFuture = new AtomicReference<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicInteger activeConversions = new AtomicInteger(0);
 
     private volatile boolean isPaused = false;
     private final Object pauseLock = new Object();
@@ -44,9 +55,15 @@ public class DownloadCoordinator implements AutoCloseable {
 
     public DownloadCoordinator(DownloadService downloadService, QueueManager queueManager,
             EventPublisher eventPublisher) {
+        this(downloadService, queueManager, eventPublisher, null);
+    }
+
+    public DownloadCoordinator(DownloadService downloadService, QueueManager queueManager,
+            EventPublisher eventPublisher, AudioConversionService audioConversionService) {
         this.downloadService = downloadService;
         this.queueManager = queueManager;
         this.eventPublisher = eventPublisher;
+        this.audioConversionService = audioConversionService;
         this.executor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "DownloadCoordinator-Thread");
             t.setDaemon(true);
@@ -92,6 +109,13 @@ public class DownloadCoordinator implements AutoCloseable {
             publishEvent(new DownloadEvent.QueueUpdated());
         }
         return added;
+    }
+
+    public CompletableFuture<Integer> addUrlOrPlaylistAsync(String url) {
+        if (closed.get()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("DownloadCoordinator ya fue cerrado."));
+        }
+        return CompletableFuture.supplyAsync(() -> addToQueue(url) ? 1 : 0, executor);
     }
 
     public void clearQueue() {
@@ -154,16 +178,64 @@ public class DownloadCoordinator implements AutoCloseable {
                             song = downloadService.getSongInfo(url);
                             publishEvent(new DownloadEvent.DownloadStarted(song));
 
-                            boolean success = downloadService.downloadSong(url, "").get();
+                            if (downloadService instanceof YouTubeDownloadService ytService && audioConversionService != null) {
+                                String musicDir = FileUtils.getMusicDirectory();
+                                String stagingDir = Paths.get(musicDir, ".cache_dl").toString();
+                                final Song finalSong = song;
+                                final String finalUrl = url;
+                                final AtomicInteger filesProcessedForUrl = new AtomicInteger(0);
 
-                            if (success && !Thread.currentThread().isInterrupted()) {
-                                queueManager.markAsCompleted(url);
-                                publishEvent(new DownloadEvent.DownloadCompleted(song, url));
+                                boolean success = ytService.downloadRawAudioStreaming(url, stagingDir, rawAudio -> {
+                                    if (rawAudio != null && rawAudio.exists()) {
+                                        filesProcessedForUrl.incrementAndGet();
+                                        activeConversions.incrementAndGet();
+
+                                        String trackTitle = resolveTrackTitle(rawAudio, finalSong);
+                                        String safeTitle = sanitizeFilename(trackTitle);
+                                        File targetMp3 = new File(musicDir, safeTitle + ".mp3");
+
+                                        audioConversionService.convertToMp3(rawAudio, targetMp3, msg -> LOGGER.info("[AudioConversion] {}", msg))
+                                                .whenComplete((resultFile, error) -> {
+                                                    try {
+                                                        if (error != null || resultFile == null) {
+                                                            LOGGER.error("Fallo en la conversión de audio para archivo {}: {}", rawAudio.getName(), error);
+                                                            queueManager.markAsFailed(finalUrl);
+                                                            publishEvent(new DownloadEvent.DownloadFailed(finalSong, error != null ? error.getMessage() : "Error en conversión"));
+                                                        } else {
+                                                            queueManager.markAsCompleted(finalUrl);
+                                                            Song itemSong = new Song(trackTitle);
+                                                            itemSong.setUrl(finalUrl);
+                                                            publishEvent(new DownloadEvent.DownloadCompleted(itemSong, resultFile.getAbsolutePath()));
+                                                        }
+                                                        publishEvent(new DownloadEvent.QueueUpdated());
+                                                    } finally {
+                                                        if (activeConversions.decrementAndGet() == 0 && queueManager.isEmpty()) {
+                                                            if (running.getAndSet(false)) {
+                                                                publishEvent(new DownloadEvent.StateChanged(false, false));
+                                                            }
+                                                        }
+                                                    }
+                                                });
+                                    }
+                                });
+
+                                if (!success && filesProcessedForUrl.get() == 0) {
+                                    queueManager.markAsFailed(url);
+                                    publishEvent(new DownloadEvent.DownloadFailed(song, "No se pudo descargar el archivo de audio"));
+                                    publishEvent(new DownloadEvent.QueueUpdated());
+                                }
                             } else {
-                                queueManager.markAsFailed(url);
-                                publishEvent(new DownloadEvent.DownloadFailed(song, "Error procesando canción"));
+                                boolean success = downloadService.downloadSong(url, "").get();
+
+                                if (success && !Thread.currentThread().isInterrupted()) {
+                                    queueManager.markAsCompleted(url);
+                                    publishEvent(new DownloadEvent.DownloadCompleted(song, url));
+                                } else {
+                                    queueManager.markAsFailed(url);
+                                    publishEvent(new DownloadEvent.DownloadFailed(song, "Error procesando canción"));
+                                }
+                                publishEvent(new DownloadEvent.QueueUpdated());
                             }
-                            publishEvent(new DownloadEvent.QueueUpdated());
                         }
                     } catch (InterruptedException e) {
                         LOGGER.info("Hilo de descarga cancelado por solicitud del usuario");
@@ -181,8 +253,10 @@ public class DownloadCoordinator implements AutoCloseable {
                 }
             } finally {
                 currentFuture.compareAndSet(futureHolder.get(), null);
-                if (running.getAndSet(false)) {
-                    publishEvent(new DownloadEvent.StateChanged(false, false));
+                if (activeConversions.get() == 0) {
+                    if (running.getAndSet(false)) {
+                        publishEvent(new DownloadEvent.StateChanged(false, false));
+                    }
                 }
             }
         });
@@ -192,8 +266,42 @@ public class DownloadCoordinator implements AutoCloseable {
         LOGGER.info("Proceso de descarga en segundo plano iniciado vía ExecutorService desacoplado");
     }
 
+    public String resolveTrackTitle(File rawAudio, Song fallbackSong) {
+        if (rawAudio != null) {
+            String nameWithoutExt = rawAudio.getName().replaceFirst("[.][^.]+$", "");
+            if (nameWithoutExt.startsWith("raw_")) {
+                String remainder = nameWithoutExt.substring(4);
+                int sepIndex = remainder.indexOf("___");
+                if (sepIndex != -1) {
+                    String titleFromFilename = remainder.substring(sepIndex + 3).trim();
+                    if (!titleFromFilename.isEmpty()) {
+                        return titleFromFilename;
+                    }
+                }
+            }
+        }
+        if (fallbackSong != null && fallbackSong.getTitle() != null && !fallbackSong.getTitle().isBlank()) {
+            return fallbackSong.getTitle();
+        }
+        if (rawAudio != null) {
+            return rawAudio.getName().replaceFirst("[.][^.]+$", "").replaceFirst("^raw_", "");
+        }
+        return "Track";
+    }
+
+    public String sanitizeFilename(String name) {
+        if (name == null || name.isBlank()) {
+            return "audio_" + System.currentTimeMillis();
+        }
+        String sanitized = name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        while (sanitized.endsWith(".") || sanitized.endsWith(" ")) {
+            sanitized = sanitized.substring(0, sanitized.length() - 1).trim();
+        }
+        return sanitized.isEmpty() ? "audio_" + System.currentTimeMillis() : sanitized;
+    }
+
     public boolean isDownloading() {
-        return running.get();
+        return running.get() || activeConversions.get() > 0;
     }
 
     public boolean isPaused() {
@@ -212,11 +320,11 @@ public class DownloadCoordinator implements AutoCloseable {
     }
 
     public boolean isQueueEmpty() {
-        return queueManager.isEmpty();
+        return queueManager.isEmpty() && activeConversions.get() == 0;
     }
 
     public void pauseDownload() {
-        if (!running.get()) {
+        if (!isDownloading()) {
             return;
         }
         pause();
@@ -226,7 +334,7 @@ public class DownloadCoordinator implements AutoCloseable {
     }
 
     public void resumeDownload() {
-        if (!running.get()) {
+        if (!isDownloading()) {
             return;
         }
         resume();
@@ -241,10 +349,35 @@ public class DownloadCoordinator implements AutoCloseable {
             future.cancel(true);
         }
         downloadService.stopDownload();
+        if (audioConversionService != null) {
+            audioConversionService.cancelAll();
+        }
+        activeConversions.set(0);
+        queueManager.clearAll();
+        cleanStagingDirectory();
         if (running.getAndSet(false)) {
             publishEvent(new DownloadEvent.StateChanged(false, false));
         }
-        LOGGER.info("Descarga cancelada vía DownloadCoordinator");
+        publishEvent(new DownloadEvent.QueueUpdated());
+        LOGGER.info("Descarga cancelada y estado totalmente reiniciado vía DownloadCoordinator");
+    }
+
+    private void cleanStagingDirectory() {
+        try {
+            Path stagingDir = Paths.get(FileUtils.getMusicDirectory(), ".cache_dl");
+            if (Files.exists(stagingDir)) {
+                try (var stream = Files.list(stagingDir)) {
+                    stream.forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException ignored) {
+                        }
+                    });
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.debug("No se pudo limpiar el directorio de staging: {}", e.getMessage());
+        }
     }
 
     private void publishEvent(DownloadEvent event) {
@@ -265,6 +398,13 @@ public class DownloadCoordinator implements AutoCloseable {
             }
         } catch (Exception e) {
             LOGGER.warn("Error al cerrar downloadService: {}", e.getMessage());
+        }
+        try {
+            if (audioConversionService != null) {
+                audioConversionService.close();
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Error al cerrar audioConversionService: {}", e.getMessage());
         }
         executor.shutdownNow();
         LOGGER.info("DownloadCoordinator destruido y listeners removidos");

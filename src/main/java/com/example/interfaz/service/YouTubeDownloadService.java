@@ -1,5 +1,6 @@
 package com.example.interfaz.service;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -142,6 +143,130 @@ public class YouTubeDownloadService implements DownloadService {
             });
             return future;
         }
+    }
+
+    public CompletableFuture<File> downloadRawAudio(String url, String stagingDir) {
+        if (closed.get()) {
+            throw new IllegalStateException("Servicio de descarga cerrado.");
+        }
+        CompletableFuture<File> future = new CompletableFuture<>();
+        downloadExecutor.execute(() -> {
+            try {
+                File rawFile = downloadRawAudioSync(url, stagingDir);
+                future.complete(rawFile);
+            } catch (DownloadException e) {
+                if (e.getCause() instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                future.completeExceptionally(e);
+            } catch (Exception e) {
+                future.completeExceptionally(
+                        new DownloadException("Error descargando audio crudo (" + url + "): " + e.getMessage(), e));
+            }
+        });
+        return future;
+    }
+
+    public boolean downloadRawAudioStreaming(String url, String stagingDir, Consumer<File> onFileCompleted) {
+        try {
+            File stagingFolder = new File(stagingDir);
+            if (!stagingFolder.exists()) {
+                stagingFolder.mkdirs();
+            }
+
+            List<String> cmd = this.commandBuilder.buildRawAudioDownloadCommand(url, stagingDir);
+            java.util.Set<String> dispatchedFiles = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+            java.util.concurrent.atomic.AtomicReference<String> currentDestination = new java.util.concurrent.atomic.AtomicReference<>();
+
+            Consumer<String> rawLineListener = line -> {
+                if (line == null) return;
+                String trimmed = line.trim();
+
+                if (trimmed.startsWith("[download] Destination:")) {
+                    String pathStr = trimmed.substring("[download] Destination:".length()).trim();
+                    currentDestination.set(pathStr);
+                } else if (trimmed.startsWith("[download]") && trimmed.contains("has already been downloaded")) {
+                    String pathStr = trimmed.replace("[download]", "").replace("has already been downloaded", "").trim();
+                    checkAndDispatchFile(pathStr, dispatchedFiles, onFileCompleted);
+                } else if (trimmed.startsWith("[download]") && trimmed.contains("100%")) {
+                    String current = currentDestination.get();
+                    if (current != null) {
+                        checkAndDispatchFile(current, dispatchedFiles, onFileCompleted);
+                    }
+                }
+
+                progressReporter.processDownloadLine(line);
+            };
+
+            boolean success = processExecutor.execute(
+                    cmd,
+                    rawLineListener,
+                    this::notifyProgress
+            );
+
+            File[] files = stagingFolder.listFiles((dir, name) -> name.startsWith("raw_"));
+            if (files != null) {
+                for (File f : files) {
+                    if (dispatchedFiles.add(f.getAbsolutePath())) {
+                        if (onFileCompleted != null) {
+                            onFileCompleted.accept(f);
+                        }
+                    }
+                }
+            }
+
+            return success;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.info("Descarga de audio crudo cancelada por interrupción");
+            notifyProgress("Error: Descarga cancelada");
+            throw new DownloadException("Descarga cancelada por interrupción", e);
+        } catch (IOException e) {
+            LOGGER.error("Error de E/S durante la descarga de audio crudo", e);
+            notifyProgress("Error: " + e.getMessage());
+            throw new DownloadException("Error de E/S al ejecutar proceso de descarga: " + e.getMessage(), e);
+        }
+    }
+
+    private void checkAndDispatchFile(String pathStr, java.util.Set<String> dispatchedFiles, Consumer<File> onFileCompleted) {
+        if (pathStr == null || pathStr.isBlank()) return;
+        File file = new File(pathStr);
+        if (file.exists() && file.length() > 0) {
+            if (dispatchedFiles.add(file.getAbsolutePath())) {
+                LOGGER.info("Archivo de audio crudo completado detectado: {}", file.getName());
+                if (onFileCompleted != null) {
+                    onFileCompleted.accept(file);
+                }
+            }
+        }
+    }
+
+    public File downloadRawAudioSync(String url, String stagingDir) {
+        File stagingFolder = new File(stagingDir);
+        if (!stagingFolder.exists()) {
+            stagingFolder.mkdirs();
+        }
+
+        java.util.concurrent.atomic.AtomicReference<File> firstFile = new java.util.concurrent.atomic.AtomicReference<>();
+        boolean success = downloadRawAudioStreaming(url, stagingDir, f -> {
+            firstFile.compareAndSet(null, f);
+        });
+
+        if (!success && firstFile.get() == null) {
+            throw new DownloadException("yt-dlp finalizó con código de error al descargar audio crudo: " + url);
+        }
+
+        File result = firstFile.get();
+        if (result != null && result.exists()) {
+            return result;
+        }
+
+        File[] matches = stagingFolder.listFiles((dir, name) -> name.startsWith("raw_"));
+        if (matches != null && matches.length > 0) {
+            return matches[0];
+        }
+
+        throw new DownloadException("No se encontró el archivo de audio crudo descargado en: " + stagingDir);
     }
 
     public boolean downloadSongSync(String url, String outputPath) {
