@@ -187,17 +187,10 @@ public class DownloadCardFactory {
         Label titleLbl = new Label(title);
         titleLbl.getStyleClass().add("card-title-text");
 
-        HBox statusRow = new HBox(4);
-        statusRow.setAlignment(Pos.CENTER_LEFT);
-        FontIcon checkIcon = new FontIcon("mdi2c-check");
-        checkIcon.setIconSize(14);
-        checkIcon.setStyle("-fx-icon-color: #10b981;");
-
         Label statusLbl = new Label("Descarga exitosa");
         statusLbl.getStyleClass().add("badge-completed");
-        statusRow.getChildren().addAll(checkIcon, statusLbl);
 
-        titleBox.getChildren().addAll(titleLbl, statusRow);
+        titleBox.getChildren().addAll(titleLbl, statusLbl);
 
         topRow.getChildren().addAll(artBox, titleBox);
         card.getChildren().add(topRow);
