@@ -18,6 +18,41 @@ public class BinaryResolver {
     private static final String FFMPEG_ENV = "FFMPEG_PATH";
     private static final String DEFAULT_YT_DLP_RELATIVE = "Libs/yt-dlp.exe";
     private static final String DEFAULT_FFMPEG_RELATIVE = "Libs/ffmpeg-2024-09-26-git-f43916e217-full_build/ffmpeg-2024-09-26-git-f43916e217-full_build/bin/ffmpeg.exe";
+    private static final String DEFAULT_QJS_RELATIVE = "Libs/qjs.exe";
+
+    public String resolveQuickJsPath() {
+        Path relative = Paths.get(System.getProperty("user.dir"), DEFAULT_QJS_RELATIVE);
+        if (Files.exists(relative)) {
+            return relative.toAbsolutePath().toString();
+        }
+
+        File jarFolder = getJarFolder();
+        if (jarFolder != null) {
+            File jarRelative = new File(jarFolder, DEFAULT_QJS_RELATIVE);
+            if (jarRelative.exists()) {
+                return jarRelative.getAbsolutePath();
+            }
+
+            File jarParentRelative = new File(jarFolder.getParentFile(), DEFAULT_QJS_RELATIVE);
+            if (jarParentRelative.exists()) {
+                return jarParentRelative.getAbsolutePath();
+            }
+        }
+
+        String exe = getExecutableName("qjs");
+        Path srcMainLibs = Paths.get(System.getProperty("user.dir"), "src", "main", "Libs");
+        String foundLocal = findInDir(srcMainLibs, exe);
+        if (foundLocal != null) {
+            return foundLocal;
+        }
+
+        String foundInPath = findInSystemPath(exe);
+        if (foundInPath != null) {
+            return foundInPath;
+        }
+
+        return null;
+    }
 
     public String resolveYtDlpPath() {
         String env = System.getenv(YT_DLP_ENV);

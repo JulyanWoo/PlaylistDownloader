@@ -20,13 +20,16 @@ public class YtDlpCommandBuilder {
 
     public List<String> buildSingleSongCommand(String url, String outputDir) {
         List<String> cmd = new ArrayList<>();
-        cmd.add(binaryResolver.resolveYtDlpPath());
+        String ytdlpPath = binaryResolver.resolveYtDlpPath();
+        cmd.add(ytdlpPath);
         cmd.add("-x");
         cmd.add("--audio-format");
         cmd.add("mp3");
         cmd.add("--newline");
         cmd.add("--socket-timeout");
-        cmd.add("10");
+        cmd.add("15");
+        cmd.add("--extractor-args");
+        cmd.add("youtube:player_client=android,web");
 
         String ffmpegPath = binaryResolver.resolveFfmpegPath();
         if (binaryResolver.isExistingPath(ffmpegPath)) {
@@ -47,13 +50,16 @@ public class YtDlpCommandBuilder {
      */
     public List<String> buildPlaylistCommand(String playlistUrl, String outputDir, int startFromVideo) {
         List<String> cmd = new ArrayList<>();
-        cmd.add(binaryResolver.resolveYtDlpPath());
+        String ytdlpPath = binaryResolver.resolveYtDlpPath();
+        cmd.add(ytdlpPath);
         cmd.add("-x");
         cmd.add("--audio-format");
         cmd.add("mp3");
         cmd.add("--newline");
         cmd.add("--socket-timeout");
         cmd.add("10");
+        cmd.add("--extractor-args");
+        cmd.add("youtube:player_client=android,web");
 
         String ffmpegPath = binaryResolver.resolveFfmpegPath();
         if (binaryResolver.isExistingPath(ffmpegPath)) {
