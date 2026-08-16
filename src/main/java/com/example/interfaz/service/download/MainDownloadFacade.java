@@ -55,11 +55,14 @@ public class MainDownloadFacade implements AutoCloseable {
             Runnable onQueueEmptyCallback
     ) {
         QueueManager queueManager = ServiceFactory.getInstance().getQueueManager();
+        AudioConversionService audioConversionService = ServiceFactory.getInstance().getAudioConversionService();
         this.downloadCoordinator = new DownloadCoordinator(
                 downloadService,
                 queueManager,
-                eventPublisher
+                eventPublisher,
+                audioConversionService
         );
+        ServiceFactory.getInstance().registerDownloadCoordinator(this.downloadCoordinator);
 
         if (downloadService instanceof YouTubeDownloadService ytService) {
             ytService.setProgressCallback(progressParser::parseAndDispatch);
@@ -107,6 +110,16 @@ public class MainDownloadFacade implements AutoCloseable {
                     }
                 }
             }));
+
+            eventPublisher.subscribe(DownloadEvent.DownloadCompleted.class, event -> Platform.runLater(() -> {
+                if (progressController != null && event != null) {
+                    String title = event.getSong() != null && event.getSong().getTitle() != null
+                            ? event.getSong().getTitle()
+                            : "Canción";
+                    String url = event.getSong() != null ? event.getSong().getUrl() : event.getFilePath();
+                    progressController.addCompletedCard(title, url);
+                }
+            }));
         }
 
         LOGGER.info("MainDownloadFacade inicializado con progreso y acciones de control.");
@@ -118,6 +131,13 @@ public class MainDownloadFacade implements AutoCloseable {
         }
         LOGGER.warn("DownloadCoordinator no inicializado al intentar agregar URL: {}", url);
         return false;
+    }
+
+    public java.util.concurrent.CompletableFuture<Integer> addUrlOrPlaylistAsync(String url) {
+        if (downloadCoordinator != null) {
+            return downloadCoordinator.addUrlOrPlaylistAsync(url);
+        }
+        return java.util.concurrent.CompletableFuture.completedFuture(0);
     }
 
     public void startNextDownload() {
