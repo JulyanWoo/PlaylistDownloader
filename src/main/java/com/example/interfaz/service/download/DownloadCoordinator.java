@@ -15,7 +15,6 @@ import com.example.interfaz.event.DownloadEvent;
 import com.example.interfaz.event.EventPublisher;
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.DownloadService;
-import com.example.interfaz.service.YouTubeDownloadService;
 
 public class DownloadCoordinator implements AutoCloseable {
 
