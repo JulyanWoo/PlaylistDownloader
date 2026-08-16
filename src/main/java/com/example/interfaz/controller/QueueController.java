@@ -95,20 +95,36 @@ public class QueueController {
             return;
         }
 
-        if (!isValidUrl(input)) {
-            dialogService.showError("URL inválida", "La URL ingresada no es válida. Debe ser de YouTube, Spotify o SoundCloud.");
-            return;
-        }
+        // Normalizar entrada para separar URLs pegadas sin espacios (ej: https://...https://...)
+        String normalizedInput = input.replaceAll("(?i)(https?://)", " $1").trim();
+        String[] urls = normalizedInput.split("[\\s,]+");
+        boolean addedAny = false;
+        
+        for (String urlStr : urls) {
+            String url = urlStr.trim();
+            if (url.isEmpty()) continue;
+            
+            if (!isValidUrl(url)) {
+                LOGGER.warn("URL inválida ignorada: {}", url);
+                continue;
+            }
 
-        if (queueManager.contains(input)) {
-            dialogService.showError("URL duplicada", "Esta URL ya está en la cola.");
-            return;
-        }
+            if (queueManager.contains(url)) {
+                LOGGER.warn("URL duplicada ignorada: {}", url);
+                continue;
+            }
 
-        if (queueManager.addToQueue(input)) {
-            Platform.runLater(() -> queueItems.add(input));
+            if (queueManager.addToQueue(url)) {
+                Platform.runLater(() -> queueItems.add(url));
+                LOGGER.info("URL agregada a la cola: {}", url);
+                addedAny = true;
+            }
+        }
+        
+        if (addedAny) {
             inputField.clear();
-            LOGGER.info("URL agregada a la cola: {}", input);
+        } else {
+            dialogService.showError("URL inválida", "Las URLs ingresadas no son válidas o ya están en la cola.");
         }
     }
 
