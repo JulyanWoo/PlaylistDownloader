@@ -9,6 +9,8 @@ import com.example.interfaz.service.YouTubeDownloadService;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -384,6 +386,75 @@ class DownloadCoordinatorTest {
 
             assertTrue(completedTitles.contains("Song One"));
             assertTrue(completedTitles.contains("Song Two"));
+        }
+    }
+
+    @Test
+    void shouldNotFinishWhileDownloadCanStillProduceConversions(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        EventBus eventBus = new EventBus();
+        QueueManager queueManager = new QueueManager();
+        CountDownLatch fileDispatched = new CountDownLatch(1);
+        CountDownLatch allowDownloadToFinish = new CountDownLatch(1);
+        CountDownLatch operationFinished = new CountDownLatch(1);
+        AtomicInteger finishEvents = new AtomicInteger();
+
+        java.io.File rawFile = new java.io.File(tempDir, "raw_test___Song.webm");
+        java.nio.file.Files.writeString(rawFile.toPath(), "raw");
+
+        YouTubeDownloadService downloadService = new YouTubeDownloadService() {
+            @Override
+            public boolean canHandle(String url) { return true; }
+            @Override
+            public Song getSongInfo(String url) { Song song = new Song("Song"); song.setUrl(url); return song; }
+            @Override
+            public boolean downloadRawAudioStreaming(String url, String stagingDir, java.util.function.Consumer<java.io.File> onFileCompleted) {
+                onFileCompleted.accept(rawFile);
+                fileDispatched.countDown();
+                try {
+                    allowDownloadToFinish.await(2, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+                return true;
+            }
+            @Override
+            public void close() {}
+        };
+
+        AudioConversionService conversionService = new AudioConversionService() {
+            @Override
+            public CompletableFuture<java.io.File> convertToMp3(java.io.File rawAudioFile, java.io.File targetMp3File, java.util.function.Consumer<String> statusCallback) {
+                return CompletableFuture.completedFuture(targetMp3File);
+            }
+            @Override
+            public void close() {}
+        };
+
+        eventBus.subscribe(DownloadEvent.StateChanged.class, event -> {
+            if (!event.isDownloading()) {
+                finishEvents.incrementAndGet();
+                operationFinished.countDown();
+            }
+        });
+
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(downloadService, queueManager, eventBus, conversionService)) {
+            coordinator.addToQueue("https://www.youtube.com/playlist?list=test");
+            coordinator.startDownload();
+
+            assertTrue(fileDispatched.await(2, TimeUnit.SECONDS));
+            try {
+                assertTrue(coordinator.isDownloading());
+                assertFalse(coordinator.isQueueEmpty());
+                assertEquals(0, finishEvents.get());
+            } finally {
+                allowDownloadToFinish.countDown();
+            }
+
+            assertTrue(operationFinished.await(2, TimeUnit.SECONDS));
+            assertFalse(coordinator.isDownloading());
+            assertTrue(coordinator.isQueueEmpty());
+            assertEquals(1, finishEvents.get());
         }
     }
 }

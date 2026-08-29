@@ -38,6 +38,7 @@ public class DownloadCoordinator implements AutoCloseable {
     private final AtomicReference<Future<?>> currentFuture = new AtomicReference<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean downloadsFinished = new AtomicBoolean(true);
     private final AtomicInteger activeConversions = new AtomicInteger(0);
 
     private volatile boolean isPaused = false;
@@ -159,6 +160,7 @@ public class DownloadCoordinator implements AutoCloseable {
             return;
         }
 
+        downloadsFinished.set(false);
         publishEvent(new DownloadEvent.StateChanged(true, false));
 
         AtomicReference<Future<?>> futureHolder = new AtomicReference<>();
@@ -209,11 +211,8 @@ public class DownloadCoordinator implements AutoCloseable {
                                                         }
                                                         publishEvent(new DownloadEvent.QueueUpdated());
                                                     } finally {
-                                                        if (activeConversions.decrementAndGet() == 0 && queueManager.isEmpty()) {
-                                                            if (running.getAndSet(false)) {
-                                                                publishEvent(new DownloadEvent.StateChanged(false, false));
-                                                            }
-                                                        }
+                                                        activeConversions.decrementAndGet();
+                                                        finishIfComplete();
                                                     }
                                                 });
                                     }
@@ -253,11 +252,8 @@ public class DownloadCoordinator implements AutoCloseable {
                 }
             } finally {
                 currentFuture.compareAndSet(futureHolder.get(), null);
-                if (activeConversions.get() == 0) {
-                    if (running.getAndSet(false)) {
-                        publishEvent(new DownloadEvent.StateChanged(false, false));
-                    }
-                }
+                downloadsFinished.set(true);
+                finishIfComplete();
             }
         });
         futureHolder.set(future);
@@ -320,7 +316,14 @@ public class DownloadCoordinator implements AutoCloseable {
     }
 
     public boolean isQueueEmpty() {
-        return queueManager.isEmpty() && activeConversions.get() == 0;
+        return queueManager.isEmpty() && downloadsFinished.get() && activeConversions.get() == 0 && !running.get();
+    }
+
+    private void finishIfComplete() {
+        if (downloadsFinished.get() && queueManager.isEmpty() && activeConversions.get() == 0
+                && running.compareAndSet(true, false)) {
+            publishEvent(new DownloadEvent.StateChanged(false, false));
+        }
     }
 
     public void pauseDownload() {
@@ -353,6 +356,7 @@ public class DownloadCoordinator implements AutoCloseable {
             audioConversionService.cancelAll();
         }
         activeConversions.set(0);
+        downloadsFinished.set(true);
         queueManager.clearAll();
         cleanStagingDirectory();
         if (running.getAndSet(false)) {

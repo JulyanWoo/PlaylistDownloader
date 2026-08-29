@@ -12,9 +12,11 @@ public class ConfigurationManager {
     private static final String CONFIG_FILE = "user-config.properties";
     private static ConfigurationManager instance;
     private Properties properties;
+    private Properties defaultProperties;
 
     private ConfigurationManager() {
         properties = new Properties();
+        defaultProperties = new Properties();
         loadConfiguration();
     }
 
@@ -26,6 +28,14 @@ public class ConfigurationManager {
     }
 
     private void loadConfiguration() {
+        try (InputStream input = ConfigurationManager.class.getResourceAsStream("/app.properties")) {
+            if (input != null) {
+                defaultProperties.load(input);
+            }
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error al cargar configuración por defecto: " + e.getMessage());
+        }
+
         File configFile = new File(CONFIG_FILE);
         if (configFile.exists()) {
             try (FileInputStream fis = new FileInputStream(configFile)) {
@@ -74,7 +84,7 @@ public class ConfigurationManager {
     }
 
     public String getProperty(String key, String defaultValue) {
-        return properties.getProperty(key, defaultValue);
+        return properties.getProperty(key, defaultProperties.getProperty(key, defaultValue));
     }
 
     public void setProperty(String key, String value) {
