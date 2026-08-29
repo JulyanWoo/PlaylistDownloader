@@ -210,35 +210,27 @@ public class DuplicateDetectionService {
             candidate.setScoreReasons(eval.reasons());
             candidate.setSimilarityBreakdown(breakdown);
 
-            LanguageDetectorService.LanguageDetectionResult langRes = langDetector.detectLanguage(
-                    buildLanguageDetectionText(s)
-            );
-            // Sync candidate language fields for UI display
-            candidate.setDetectedLanguage(langRes.languageName());
-            candidate.setLanguageConfidence(langRes.confidence());
+            com.example.interfaz.model.analyzer.LanguageInfo languageInfo = s.getLanguageInfo();
+            if (languageInfo == null || "unknown".equals(languageInfo.code())) {
+                LanguageDetectorService.LanguageDetectionResult langRes =
+                        s.getTitle() != null && !s.getTitle().isBlank()
+                                ? langDetector.detectLanguageForTrack(s.getTitle(), s.getArtist())
+                                : langDetector.detectLanguage(s.getFileName());
+                languageInfo = langRes.toLanguageInfo();
+                s.setLanguageInfo(languageInfo);
+            }
+            String detectedLanguage = "Ambiguo".equals(languageInfo.name())
+                    && languageInfo.alternatives() != null
+                    && !languageInfo.alternatives().isBlank()
+                            ? languageInfo.name() + " " + languageInfo.alternatives()
+                            : languageInfo.name();
+            candidate.setDetectedLanguage(detectedLanguage);
+            candidate.setLanguageConfidence(languageInfo.confidence());
 
             candidates.add(candidate);
         }
 
         return candidates;
-    }
-
-    /**
-     * Builds the text to use for language detection, with proper fallback to filename.
-     * This is needed because SongMetadataReader initializes title/artist as empty strings,
-     * not null, when no tags are present.
-     */
-    private String buildLanguageDetectionText(SongFile s) {
-        String artist = s.getArtist();
-        String title = s.getTitle();
-        boolean hasArtist = artist != null && !artist.isBlank();
-        boolean hasTitle = title != null && !title.isBlank();
-
-        if (hasArtist && hasTitle) return artist + " " + title;
-        if (hasTitle) return title;
-        if (hasArtist) return artist + " " + s.getFileName();
-        // Fallback to filename (contains "Artist - Song Title" in most cases)
-        return s.getFileName();
     }
 
     public OriginalScoreCalculator.QualityEvaluation evaluateQuality(SongFile song) {

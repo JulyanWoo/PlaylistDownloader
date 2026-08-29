@@ -1,0 +1,27 @@
+{
+  "modelVersion": "chargram-v1",
+  "sha256": "1BAB7D0448E8516FBA69198730EB388538C54C156BC0FDF030EEDFAB897CDFD7",
+  "languages": ["es", "en", "pt", "fr"],
+  "ngramMin": 2,
+  "ngramMax": 5,
+  "featureCount": 65536,
+  "hashSeed": 42,
+  "training": {
+    "baseDataset": "OpenLID-v3 filtered, 50,000 per language",
+    "musicDataset": "Music4All metadata, 15,400 titles",
+    "domainDataset": "music_titles.csv",
+    "hardExamples": "not used for promoted model"
+  },
+  "metrics": {
+    "testAccuracy": 0.9646666667,
+    "macroF1": 0.9647273247,
+    "esToPtTotal": 0.0458666667,
+    "esToPtDistinguishable": 0.0036067326,
+    "ptToEsTotal": 0.0189333333,
+    "ptToEsDistinguishable": 0.0,
+    "goldenExact": 0.8421052632,
+    "goldenCoverage": 0.6315789474,
+    "definitiveAccuracy": 1.0,
+    "confidentErrors": 0
+  }
+}

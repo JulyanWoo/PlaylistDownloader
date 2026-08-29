@@ -73,6 +73,16 @@
             <artifactId>jaudiotagger</artifactId>
             <version>3.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.pemistahl</groupId>
+            <artifactId>lingua</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>1.6.21</version>
+        </dependency>
 
         <!-- JUnit 5 for Unit Testing -->
         <dependency>
@@ -148,6 +158,11 @@
                                     <include>org.kordamp.ikonli:*</include>
                                     <include>io.github.mkpaz:*</include>
                                     <include>net.jthink:*</include>
+                                    <include>com.github.pemistahl:*</include>
+                                    <include>org.jetbrains.kotlin:*</include>
+                                    <include>com.squareup.moshi:*</include>
+                                    <include>com.squareup.okio:*</include>
+                                    <include>it.unimi.dsi:*</include>
                                 </includes>
                             </artifactSet>
                         </configuration>

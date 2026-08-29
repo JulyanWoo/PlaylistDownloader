@@ -24,7 +24,7 @@ class LanguageBrowserTableConfiguratorTest {
     void testInitialization() {
         assertNotNull(configurator);
         assertDoesNotThrow(() -> configurator.configure(
-                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
                 null, null, null, viewModel
         ));
     }

@@ -202,7 +202,8 @@
                     <TableColumn fx:id="colLangName" prefWidth="240" text="Nombre" />
                     <TableColumn fx:id="colLangArtist" prefWidth="150" text="Artista" />
                     <TableColumn fx:id="colLangLang" prefWidth="140" text="Idioma detectado" />
-                    <TableColumn fx:id="colLangConf" prefWidth="90" text="Confianza" />
+                    <TableColumn fx:id="colLangConf" prefWidth="90" text="Certeza" />
+                    <TableColumn fx:id="colLangMethod" prefWidth="90" text="Método" />
                     <TableColumn fx:id="colLangFormat" prefWidth="70" text="Formato" />
                     <TableColumn fx:id="colLangSize" prefWidth="90" text="Tamaño" />
                     <TableColumn fx:id="colLangPath" prefWidth="260" text="Ruta" />

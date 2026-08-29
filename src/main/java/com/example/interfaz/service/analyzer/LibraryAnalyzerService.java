@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -44,8 +45,10 @@ public class LibraryAnalyzerService implements AutoCloseable {
     private final SongMetadataReader metadataReader;
     private final DuplicateDetectionService duplicateDetectionService;
     private final EventPublisher eventPublisher;
+    private final LanguageAnalysisCache languageCache;
 
     private final ExecutorService executorService;
+    private final ExecutorService languageExecutor;
     private Future<?> currentTask;
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
 
@@ -53,12 +56,29 @@ public class LibraryAnalyzerService implements AutoCloseable {
             SongMetadataReader metadataReader,
             DuplicateDetectionService duplicateDetectionService,
             EventPublisher eventPublisher) {
+        this(musicFolderService, metadataReader, duplicateDetectionService,
+                eventPublisher, new LanguageAnalysisCache());
+    }
+
+    LibraryAnalyzerService(MusicFolderService musicFolderService,
+            SongMetadataReader metadataReader,
+            DuplicateDetectionService duplicateDetectionService,
+            EventPublisher eventPublisher,
+            LanguageAnalysisCache languageCache) {
         this.musicFolderService = musicFolderService;
         this.metadataReader = metadataReader != null ? metadataReader : new SongMetadataReader();
         this.duplicateDetectionService = duplicateDetectionService != null ? duplicateDetectionService : new DuplicateDetectionService();
         this.eventPublisher = eventPublisher;
+        this.languageCache = languageCache != null ? languageCache : new LanguageAnalysisCache();
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "LibraryAnalyzerWorker");
+            t.setDaemon(true);
+            return t;
+        });
+        int processors = Runtime.getRuntime().availableProcessors();
+        int languageWorkers = Math.max(2, Math.min(Math.max(1, processors / 2), 4));
+        this.languageExecutor = Executors.newFixedThreadPool(languageWorkers, r -> {
+            Thread t = new Thread(r, "LanguageAnalyzerWorker");
             t.setDaemon(true);
             return t;
         });
@@ -169,17 +189,7 @@ public class LibraryAnalyzerService implements AutoCloseable {
             }
             LanguageDetectorService langDetector = new LanguageDetectorService(
                     duplicateDetectionService.getLanguageDetectorMode());
-            for (SongFile song : processedSongs) {
-                if (cancelled.get() || Thread.currentThread().isInterrupted()) break;
-                LanguageDetectorService.LanguageDetectionResult lr;
-                if ((song.getTitle() != null && !song.getTitle().isBlank()) || (song.getArtist() != null && !song.getArtist().isBlank())) {
-                    lr = langDetector.detectLanguageForTrack(song.getTitle(), song.getArtist());
-                } else {
-                    lr = langDetector.detectLanguage(song.getFileName());
-                }
-                song.setLanguageInfo(new LanguageInfo(lr.languageCode(), lr.languageName(),
-                        lr.confidence(), System.currentTimeMillis()));
-            }
+            detectLanguages(processedSongs, langDetector);
         }
 
         // Phase 4 & 5: Similarity matching & Recommendations
@@ -221,17 +231,59 @@ public class LibraryAnalyzerService implements AutoCloseable {
         LOGGER.info("Library analysis finished. Songs: {}, Duplicates: {}", processedSongs.size(), totalDuplicates);
     }
 
-    /** Builds text for language detection, falling back to filename when tags are absent. */
-    @SuppressWarnings("unused")
-    private String buildLangText(SongFile s) {
-        String artist = s.getArtist();
-        String title = s.getTitle();
-        boolean hasArtist = artist != null && !artist.isBlank();
-        boolean hasTitle = title != null && !title.isBlank();
-        if (hasArtist && hasTitle) return artist + " " + title;
-        if (hasTitle) return title;
-        if (hasArtist) return artist + " " + s.getFileName();
-        return s.getFileName();
+    private void detectLanguages(
+            List<SongFile> songs,
+            LanguageDetectorService detector
+    ) {
+        List<Future<?>> tasks = new ArrayList<>();
+        for (SongFile song : songs) {
+            if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                break;
+            }
+            long lastModified = getLastModified(song.getPath());
+            LanguageInfo cached = languageCache.get(song.getPath(), song.getSize(), lastModified,
+                    LanguageDetectorService.DETECTOR_VERSION);
+            if (cached != null) {
+                song.setLanguageInfo(cached);
+                continue;
+            }
+            tasks.add(languageExecutor.submit(() -> {
+                if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                LanguageDetectorService.LanguageDetectionResult result =
+                        song.getTitle() != null && !song.getTitle().isBlank()
+                                ? detector.detectLanguageForTrack(song.getTitle(), song.getArtist())
+                                : detector.detectLanguage(song.getFileName());
+                LanguageInfo info = result.toLanguageInfo();
+                song.setLanguageInfo(info);
+                languageCache.put(song.getPath(), song.getSize(), lastModified,
+                        LanguageDetectorService.DETECTOR_VERSION, info);
+            }));
+        }
+        for (Future<?> task : tasks) {
+            try {
+                task.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                cancelled.set(true);
+                break;
+            } catch (ExecutionException e) {
+                LOGGER.warn("Language detection failed: {}", e.getCause().getMessage());
+            }
+        }
+        languageCache.save();
+    }
+
+    private long getLastModified(Path path) {
+        if (path == null) {
+            return 0;
+        }
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            return 0;
+        }
     }
 
     private void publishCancelledResult(long processedCount, long totalFiles,
@@ -402,5 +454,6 @@ public class LibraryAnalyzerService implements AutoCloseable {
     public void close() {
         cancelAnalysis();
         executorService.shutdownNow();
+        languageExecutor.shutdownNow();
     }
 }

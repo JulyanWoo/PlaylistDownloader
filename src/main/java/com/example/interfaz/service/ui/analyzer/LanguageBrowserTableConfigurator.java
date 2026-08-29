@@ -22,6 +22,7 @@ public class LanguageBrowserTableConfigurator {
             TableColumn<LanguageSongRowModel, String> colLangArtist,
             TableColumn<LanguageSongRowModel, String> colLangLang,
             TableColumn<LanguageSongRowModel, String> colLangConf,
+            TableColumn<LanguageSongRowModel, String> colLangMethod,
             TableColumn<LanguageSongRowModel, String> colLangFormat,
             TableColumn<LanguageSongRowModel, String> colLangSize,
             TableColumn<LanguageSongRowModel, String> colLangPath,
@@ -33,7 +34,8 @@ public class LanguageBrowserTableConfigurator {
         if (cmbLangFilter != null) {
             cmbLangFilter.getItems().setAll(
                     "Todos", "Español", "Inglés", "Portugués", "Francés",
-                    "Asiático (CJK)", "Mixto / Bilingüe", "Desconocido"
+                    "Japonés", "Coreano", "Chino", "Ambiguo",
+                    "Mixto / Bilingüe", "Desconocido"
             );
             cmbLangFilter.getSelectionModel().select("Todos");
 
@@ -98,6 +100,11 @@ public class LanguageBrowserTableConfigurator {
                         param.getValue() != null ? param.getValue().getConfidence() : ""));
             }
 
+            if (colLangMethod != null) {
+                colLangMethod.setCellValueFactory(param -> new SimpleStringProperty(
+                        param.getValue() != null ? param.getValue().getMethod() : ""));
+            }
+
             if (colLangFormat != null) {
                 colLangFormat.setCellValueFactory(param -> new SimpleStringProperty(
                         param.getValue() != null ? param.getValue().getFormat() : ""));
@@ -129,12 +136,15 @@ public class LanguageBrowserTableConfigurator {
 
     private String getLangStyle(String langName) {
         if (langName == null) return "";
+        if (langName.startsWith("Ambiguo")) {
+            return "-fx-text-fill: #FFC107; -fx-font-weight: bold;";
+        }
         return switch (langName) {
             case "Español" -> "-fx-text-fill: #4CAF50; -fx-font-weight: bold;";
             case "Inglés" -> "-fx-text-fill: #2196F3; -fx-font-weight: bold;";
             case "Portugués" -> "-fx-text-fill: #FF9800; -fx-font-weight: bold;";
             case "Francés" -> "-fx-text-fill: #9C27B0; -fx-font-weight: bold;";
-            case "Asiático (CJK)" -> "-fx-text-fill: #F44336; -fx-font-weight: bold;";
+            case "Japonés", "Coreano", "Chino" -> "-fx-text-fill: #F44336; -fx-font-weight: bold;";
             case "Mixto / Bilingüe" -> "-fx-text-fill: #795548; -fx-font-weight: bold;";
             default -> "-fx-text-fill: -color-fg-muted;";
         };
