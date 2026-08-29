@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.example.interfaz.config.ConfigurationManager;
 import com.example.interfaz.exception.DownloadException;
 
 
@@ -34,7 +35,11 @@ public class AudioConversionService implements AutoCloseable {
     }
 
     public AudioConversionService(BinaryResolver binaryResolver) {
-        this(binaryResolver, Executors.newFixedThreadPool(2, r -> {
+        this(binaryResolver, getMaxConcurrentConversions());
+    }
+
+    public AudioConversionService(BinaryResolver binaryResolver, int maxConcurrentConversions) {
+        this(binaryResolver, Executors.newFixedThreadPool(maxConcurrentConversions, r -> {
             Thread t = new Thread(r, "AudioConverter-Worker");
             t.setDaemon(true);
             return t;
@@ -44,6 +49,18 @@ public class AudioConversionService implements AutoCloseable {
     public AudioConversionService(BinaryResolver binaryResolver, ExecutorService conversionExecutor) {
         this.binaryResolver = binaryResolver;
         this.conversionExecutor = conversionExecutor;
+    }
+
+    private static int getMaxConcurrentConversions() {
+        int availableProcessors = Math.max(1, Runtime.getRuntime().availableProcessors());
+        String configuredValue = ConfigurationManager.getInstance()
+                .getProperty("conversion.max.concurrent", String.valueOf(Math.min(2, availableProcessors)));
+        try {
+            int configuredWorkers = Integer.parseInt(configuredValue);
+            return Math.max(1, Math.min(configuredWorkers, availableProcessors));
+        } catch (NumberFormatException e) {
+            return Math.min(2, availableProcessors);
+        }
     }
 
     public CompletableFuture<File> convertToMp3(
