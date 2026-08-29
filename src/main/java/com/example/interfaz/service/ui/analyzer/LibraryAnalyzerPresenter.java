@@ -99,7 +99,9 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
         if (languageConfigurator != null) {
             languageConfigurator.configure(
                     controls.langBrowserTable(),
-                    controls.colLangSelect(), controls.colLangName(), controls.colLangArtist(), controls.colLangLang(), controls.colLangConf(), controls.colLangFormat(), controls.colLangSize(), controls.colLangPath(),
+                    controls.colLangSelect(), controls.colLangName(), controls.colLangArtist(),
+                    controls.colLangLang(), controls.colLangConf(), controls.colLangMethod(),
+                    controls.colLangFormat(), controls.colLangSize(), controls.colLangPath(),
                     controls.cmbLangFilter(), controls.txtLangSearch(), controls.lblLangCount(), viewModel
             );
         }

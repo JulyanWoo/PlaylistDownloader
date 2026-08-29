@@ -50,13 +50,23 @@ public class LanguageSongRowModel {
     }
 
     public String getLanguage() {
-        return songFile.getLanguageInfo().name();
+        String name = songFile.getLanguageInfo().name();
+        String alternatives = songFile.getLanguageInfo().alternatives();
+        if ("Ambiguo".equals(name) && alternatives != null && !alternatives.isBlank()) {
+            return name + " " + alternatives;
+        }
+        return name;
     }
 
     public String getConfidence() {
+        if ("ambiguous".equals(songFile.getLanguageInfo().code())) return "—";
         double conf = songFile.getLanguageInfo().confidence();
         if (conf <= 0.0) return "—";
         return String.format("%.0f%%", conf * 100);
+    }
+
+    public String getMethod() {
+        return songFile.getLanguageInfo().method().getDisplayName();
     }
 
     public String getFormat() {

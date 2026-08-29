@@ -74,6 +74,7 @@ public class LibraryAnalyzerController implements AutoCloseable {
     @FXML private TableColumn<LanguageSongRowModel, String> colLangArtist;
     @FXML private TableColumn<LanguageSongRowModel, String> colLangLang;
     @FXML private TableColumn<LanguageSongRowModel, String> colLangConf;
+    @FXML private TableColumn<LanguageSongRowModel, String> colLangMethod;
     @FXML private TableColumn<LanguageSongRowModel, String> colLangFormat;
     @FXML private TableColumn<LanguageSongRowModel, String> colLangSize;
     @FXML private TableColumn<LanguageSongRowModel, String> colLangPath;
@@ -101,7 +102,8 @@ public class LibraryAnalyzerController implements AutoCloseable {
                 duplicatesPane, resultsTreeTable,
                 colSelect, colName, colArtist, colDuration, colSize, colType, colLanguage, colStatus, colPath,
                 languageBrowserPane, cmbLangFilter, txtLangSearch, lblLangCount,
-                langBrowserTable, colLangSelect, colLangName, colLangArtist, colLangLang, colLangConf, colLangFormat, colLangSize, colLangPath
+                langBrowserTable, colLangSelect, colLangName, colLangArtist, colLangLang,
+                colLangConf, colLangMethod, colLangFormat, colLangSize, colLangPath
         );
     }
 

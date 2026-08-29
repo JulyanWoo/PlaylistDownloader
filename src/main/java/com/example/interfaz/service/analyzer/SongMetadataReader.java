@@ -24,13 +24,16 @@ public class SongMetadataReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SongMetadataReader.class);
     private final SongNameNormalizer normalizer;
+    private final TitleParserService titleParser;
 
     public SongMetadataReader() {
         this.normalizer = new SongNameNormalizer();
+        this.titleParser = new TitleParserService();
     }
 
     public SongMetadataReader(SongNameNormalizer normalizer) {
         this.normalizer = normalizer != null ? normalizer : new SongNameNormalizer();
+        this.titleParser = new TitleParserService();
     }
 
     public SongFile readMetadata(Path path) {
@@ -71,8 +74,12 @@ public class SongMetadataReader {
         }
 
         String rawNameForNormalization = (title != null && !title.trim().isEmpty())
-                ? (artist != null && !artist.trim().isEmpty() ? artist + " " + title : title)
-                : fileName;
+                ? title
+                : titleParser.parse(fileName).title();
+
+        if (title == null || title.trim().isEmpty()) {
+            title = titleParser.parse(fileName).title();
+        }
 
         String normalizedName = normalizer.normalize(rawNameForNormalization);
 

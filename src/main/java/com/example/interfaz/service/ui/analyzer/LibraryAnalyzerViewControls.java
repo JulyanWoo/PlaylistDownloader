@@ -53,6 +53,7 @@ public record LibraryAnalyzerViewControls(
         TableColumn<LanguageSongRowModel, String> colLangArtist,
         TableColumn<LanguageSongRowModel, String> colLangLang,
         TableColumn<LanguageSongRowModel, String> colLangConf,
+        TableColumn<LanguageSongRowModel, String> colLangMethod,
         TableColumn<LanguageSongRowModel, String> colLangFormat,
         TableColumn<LanguageSongRowModel, String> colLangSize,
         TableColumn<LanguageSongRowModel, String> colLangPath

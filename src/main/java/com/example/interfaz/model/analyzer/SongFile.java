@@ -93,7 +93,10 @@ public class SongFile {
     }
 
     public void setLanguage(String language) {
-        this.languageInfo = new LanguageInfo(languageInfo.code(), language != null ? language : "Desconocido", languageInfo.confidence(), System.currentTimeMillis());
+        this.languageInfo = new LanguageInfo(languageInfo.code(),
+                language != null ? language : "Desconocido",
+                languageInfo.confidence(), languageInfo.margin(), languageInfo.method(),
+                languageInfo.alternatives(), System.currentTimeMillis());
     }
 
     public double getLanguageConfidence() {
@@ -101,6 +104,8 @@ public class SongFile {
     }
 
     public void setLanguageConfidence(double languageConfidence) {
-        this.languageInfo = new LanguageInfo(languageInfo.code(), languageInfo.name(), languageConfidence, System.currentTimeMillis());
+        this.languageInfo = new LanguageInfo(languageInfo.code(), languageInfo.name(),
+                languageConfidence, languageInfo.margin(), languageInfo.method(),
+                languageInfo.alternatives(), System.currentTimeMillis());
     }
 }

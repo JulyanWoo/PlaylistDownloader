@@ -1,9 +1,9 @@
 package com.example.interfaz.model.analyzer;
 
 public enum LanguageDetectorMode {
-    CONSERVATIVE("Estricta (Baja)"),
-    BALANCED("Balanceada (Media)"),
-    AGGRESSIVE("Agresiva (Alta)");
+    FAST("Rápido"),
+    BALANCED("Balanceado"),
+    PRECISE("Preciso");
 
     private final String displayName;
 

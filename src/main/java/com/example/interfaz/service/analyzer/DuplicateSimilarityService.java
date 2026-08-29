@@ -46,12 +46,11 @@ public class DuplicateSimilarityService {
             score = (titleJaro * 0.50) + (titleToken * 0.40) + (durationSim * 0.10);
         }
 
-        // Language factor adjustment
         double langAdj = 0.0;
-        LanguageDetectorService.LanguageDetectionResult langA = languageDetector.detectLanguage(metaA.artist() + " " + metaA.title());
-        LanguageDetectorService.LanguageDetectionResult langB = languageDetector.detectLanguage(metaB.artist() + " " + metaB.title());
+        LanguageDetectorService.LanguageDetectionResult langA = languageDetector.detectLanguage(metaA.title());
+        LanguageDetectorService.LanguageDetectionResult langB = languageDetector.detectLanguage(metaB.title());
 
-        if (!"unknown".equals(langA.languageCode()) && !"unknown".equals(langB.languageCode())) {
+        if (isReliableLanguage(langA.languageCode()) && isReliableLanguage(langB.languageCode())) {
             if (!langA.languageCode().equals(langB.languageCode())) {
                 langAdj = -0.05;
             } else {
@@ -87,6 +86,13 @@ public class DuplicateSimilarityService {
 
         double finalScore = Math.max(0.0, Math.min(1.0, score));
         return new com.example.interfaz.model.analyzer.SimilarityBreakdown(titleJaro, artistJaro, durationSim, langAdj, modPenalty, finalScore);
+    }
+
+    private boolean isReliableLanguage(String code) {
+        return code != null
+                && !"unknown".equals(code)
+                && !"ambiguous".equals(code)
+                && !"mixed".equals(code);
     }
 
     public double getModifierPenalty(String modifier) {

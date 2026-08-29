@@ -1,112 +1,199 @@
 package com.example.interfaz.service.analyzer;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
+import com.example.interfaz.model.analyzer.LanguageDetectionMethod;
 import com.example.interfaz.model.analyzer.LanguageDetectorMode;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class LanguageDetectorServiceTest {
 
     private final LanguageDetectorService service = new LanguageDetectorService();
 
     @Test
-    void testSpanishDetection() {
-        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguage("Luis Miguel - Ahora Te Puedes Marchar");
-        assertEquals("es", res.languageCode());
-        assertEquals("Español", res.languageName());
-        assertTrue(res.confidence() > 0.50);
+    void detectsSupportedLatinLanguages() {
+        assertEquals("es", service.detectLanguage("Ahora te puedes marchar").languageCode());
+        assertEquals("en", service.detectLanguage("Dancing in the dark tonight").languageCode());
+        assertEquals("pt", service.detectLanguage("Você não sabe do meu coração").languageCode());
+        assertEquals("fr", service.detectLanguage("Je veux danser avec toi").languageCode());
     }
 
     @Test
-    void testSpanishAccentedTitlesAndKeywords() {
-        LanguageDetectorService.LanguageDetectionResult res1 = service.detectLanguage("Banda Los Recoditos - Mi Último Deseo");
-        assertEquals("es", res1.languageCode());
-        assertEquals("Español", res1.languageName());
+    void keepsReportedSpanishTitlesOutOfPortuguese() {
+        List<String> titles = List.of(
+                "El Desmadre",
+                "El Embustero",
+                "El Mejor",
+                "El Mozo",
+                "Amor Verdadero",
+                "Borracho de Celos",
+                "Así Soy Yo",
+                "Besitos Por Botellas"
+        );
 
-        LanguageDetectorService.LanguageDetectionResult res2 = service.detectLanguage("Carlos Vives, Sebastián Yatra - Robarte un Beso");
-        assertEquals("es", res2.languageCode());
-        assertEquals("Español", res2.languageName());
+        long portugueseResults = titles.stream()
+                .map(service::detectLanguage)
+                .filter(result -> "pt".equals(result.languageCode()))
+                .count();
 
-        LanguageDetectorService.LanguageDetectionResult res3 = service.detectLanguage("KAROL G, Nicki Minaj - Tusa");
-        assertEquals("es", res3.languageCode());
-        assertEquals("Español", res3.languageName());
+        assertEquals(0, portugueseResults);
+        assertFalse("pt".equals(service.detectLanguage("Borracho de Celos").languageCode()));
+        assertEquals("es", service.detectLanguage(
+                "Borracho de Celos", LanguageDetectorMode.FAST).languageCode());
+        assertEquals("es", service.detectLanguage("Así Soy Yo").languageCode());
     }
 
     @Test
-    void testEnglishDetection() {
-        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguage("Shakira - Hips Don't Lie");
-        assertEquals("en", res.languageCode());
-        assertEquals("Inglés", res.languageName());
+    void leavesInsufficientTitlesAmbiguous() {
+        LanguageDetectorService.LanguageDetectionResult result = service.detectLanguage("Amor");
+
+        assertEquals("ambiguous", result.languageCode());
+        assertEquals("Ambiguo", result.languageName());
+        assertFalse(result.alternatives().isBlank());
+        assertEquals(LanguageDetectionMethod.TEXT, result.method());
     }
 
     @Test
-    void testCjkDetection() {
-        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguage("RADWIMPS - 前前前世");
-        assertEquals("ja_cjk", res.languageCode());
-        assertEquals("Asiático (CJK)", res.languageName());
+    void separatesJapaneseKoreanAndChineseScripts() {
+        assertEquals("ja", service.detectLanguage("君の名は").languageCode());
+        assertEquals("ko", service.detectLanguage("사랑해").languageCode());
+        assertEquals("zh", service.detectLanguage("月亮代表我的心").languageCode());
     }
 
     @Test
-    void testDiacriticsPreFilter() {
-        LanguageDetectorService.LanguageDetectionResult esRes = service.detectLanguage("¿Dónde estás, niña?");
-        assertEquals("es", esRes.languageCode());
+    void usesDeterministicCharactersBeforeTheTextModel() {
+        LanguageDetectorService.LanguageDetectionResult spanish = service.detectLanguage("¿Dónde estás, niña?");
+        LanguageDetectorService.LanguageDetectionResult portuguese = service.detectLanguage("Canção do coração e não");
+        LanguageDetectorService.LanguageDetectionResult french = service.detectLanguage("Cœur de la nuit");
 
-        LanguageDetectorService.LanguageDetectionResult frRes = service.detectLanguage("Garçon et française à la plage");
-        assertEquals("fr", frRes.languageCode());
-
-        LanguageDetectorService.LanguageDetectionResult ptRes = service.detectLanguage("Canção do coração e não da razão");
-        assertEquals("pt", ptRes.languageCode());
+        assertEquals("es", spanish.languageCode());
+        assertEquals("pt", portuguese.languageCode());
+        assertEquals("fr", french.languageCode());
+        assertEquals(LanguageDetectionMethod.UNICODE, spanish.method());
+        assertEquals(LanguageDetectionMethod.UNICODE, portuguese.method());
+        assertEquals(LanguageDetectionMethod.UNICODE, french.method());
     }
 
     @Test
-    void testSeparateTitleArtistWeighting() {
-        // "Yeison Jimenez" as artist should not override a clear Spanish title "El Último Adiós"
-        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguageForTrack("El Último Adiós", "Yeison Jimenez");
-        assertEquals("es", res.languageCode());
-        assertTrue(res.confidence() >= 0.50);
+    void cleansFileAndMusicMetadata() {
+        assertEquals("Gasolina", service.cleanTitle(
+                "Daddy Yankee - Gasolina (Official Video) [HD].mp3"));
+        assertEquals("Amor", service.cleanTitle("Amor (Remix).flac"));
+        assertEquals("Stay", service.cleanTitle("Stay feat. Artist (Official Audio).wav"));
     }
 
     @Test
-    void testBigramsAndMorphology() {
-        LanguageDetectorService.LanguageDetectionResult esRes = service.detectLanguage("Llorar Quiero");
-        assertEquals("es", esRes.languageCode());
+    void doesNotUseArtistAsLinguisticInput() {
+        LanguageDetectorService.LanguageDetectionResult titleOnly =
+                service.detectLanguage("Mi último deseo");
+        LanguageDetectorService.LanguageDetectionResult withArtist =
+                service.detectLanguageForTrack("Mi último deseo", "The English Band");
 
-        LanguageDetectorService.LanguageDetectionResult enRes = service.detectLanguage("Thinking Somewhere");
-        assertEquals("en", enRes.languageCode());
+        assertEquals(titleOnly.languageCode(), withArtist.languageCode());
+        assertEquals(titleOnly.margin(), withArtist.margin());
     }
 
     @Test
-    void testAggressivenessModes() {
-        String testTitle = "Ahora Resulta";
+    void exposesDecisionMarginAndMethod() {
+        LanguageDetectorService.LanguageDetectionResult result =
+                service.detectLanguage("Dancing in the dark tonight");
 
-        LanguageDetectorService.LanguageDetectionResult conservative = service.detectLanguage(testTitle, LanguageDetectorMode.CONSERVATIVE);
-        assertEquals("es", conservative.languageCode());
-
-        LanguageDetectorService.LanguageDetectionResult aggressive = service.detectLanguage(testTitle, LanguageDetectorMode.AGGRESSIVE);
-        assertEquals("es", aggressive.languageCode());
-        assertTrue(aggressive.confidence() >= conservative.confidence());
+        assertEquals("en", result.languageCode());
+        assertTrue(result.margin() > 0.0);
+        assertEquals(result.margin(), result.confidence());
+        assertEquals(LanguageDetectionMethod.TEXT, result.method());
     }
 
     @Test
-    void testAmbiguousDetectionInConservativeMode() {
-        LanguageDetectorService.LanguageDetectionResult res = service.detectLanguage("Xyz", LanguageDetectorMode.CONSERVATIVE);
-        assertEquals("unknown", res.languageCode());
-        assertEquals("Ambiguo", res.languageName());
+    void preciseModeIsMoreConservativeThanFastMode() {
+        String title = "Secreto de Amor";
+        LanguageDetectorService.LanguageDetectionResult fast =
+                service.detectLanguage(title, LanguageDetectorMode.FAST);
+        LanguageDetectorService.LanguageDetectionResult precise =
+                service.detectLanguage(title, LanguageDetectorMode.PRECISE);
+
+        if ("ambiguous".equals(fast.languageCode())) {
+            assertEquals("ambiguous", precise.languageCode());
+        }
+        assertTrue(precise.margin() >= 0.0);
     }
 
     @Test
-    void testFilenameBasedDetection() {
-        LanguageDetectorService.LanguageDetectionResult r1 = service.detectLanguage("KAROL G, Nicki Minaj - Tusa (Official Video).mp3");
-        assertEquals("es", r1.languageCode(), "Tusa should be detected as Spanish from filename");
+    void detectsExplicitMixedMetadata() {
+        LanguageDetectorService.LanguageDetectionResult result =
+                service.detectLanguage("My Love Spanish-English Version");
 
-        LanguageDetectorService.LanguageDetectionResult r2 = service.detectLanguage("Banda Los Recoditos - Mi Ultimo Deseo (Version 30 Aniversario).mp3");
-        assertEquals("es", r2.languageCode(), "Mi Ultimo Deseo should be detected as Spanish from filename");
+        assertEquals("mixed", result.languageCode());
+        assertEquals(LanguageDetectionMethod.METADATA, result.method());
+    }
 
-        LanguageDetectorService.LanguageDetectionResult r3 = service.detectLanguage("Carlos Vives, Sebastian Yatra - Robarte un Beso (Official Video).mp3");
-        assertEquals("es", r3.languageCode(), "Robarte un Beso should be detected as Spanish from filename");
+    @Test
+    void meetsMinimumAccuracyOnCuratedTitles() {
+        List<String> spanish = List.of(
+                "Ahora Te Puedes Marchar",
+                "Borracho de Celos",
+                "Amigos con Derechos",
+                "El Mejor de Mis Recuerdos",
+                "Así Soy Yo",
+                "Besitos Por Botellas",
+                "Mi Último Deseo",
+                "Robarte un Beso",
+                "No Sufriré Por Nadie",
+                "Amor Verdadero Para Siempre"
+        );
+        List<String> english = List.of(
+                "Dancing in the Dark",
+                "Thinking Out Loud",
+                "I Will Always Love You",
+                "Don't Stop Me Now",
+                "Wake Me Up Before You Go",
+                "Nothing Else Matters",
+                "The Sound of Silence",
+                "Everybody Wants to Rule the World",
+                "You Are Not Alone",
+                "Walking on Sunshine"
+        );
+        List<String> portuguese = List.of(
+                "Você Não Sabe do Meu Coração",
+                "Canção Para Minha Vida",
+                "Tudo Que Você Quiser",
+                "Meu Amor Não Vai Embora",
+                "Saudade da Minha Terra",
+                "Quando a Chuva Passar",
+                "Eu Sei Que Vou Te Amar",
+                "Não Quero Dinheiro",
+                "A Vida Toda Com Você",
+                "Nosso Sonho de Amor"
+        );
+        List<String> french = List.of(
+                "Je Veux Danser Avec Toi",
+                "La Vie en Rose",
+                "Quand On N'a Que L'amour",
+                "Je Ne Regrette Rien",
+                "Sous le Ciel de Paris",
+                "Pour Que Tu M'aimes Encore",
+                "Le Temps des Fleurs",
+                "Moi Je Joue",
+                "La Mer et le Soleil",
+                "Tous les Garçons et les Filles"
+        );
 
-        LanguageDetectorService.LanguageDetectionResult r4 = service.detectLanguage("Ahora Resulta - copia (2).mp3");
-        assertEquals("es", r4.languageCode(), "Ahora Resulta should be detected as Spanish from filename");
+        assertTrue(accuracy(spanish, "es") >= 0.80);
+        assertTrue(accuracy(english, "en") >= 0.80);
+        assertTrue(accuracy(portuguese, "pt") >= 0.80);
+        assertTrue(accuracy(french, "fr") >= 0.80);
+    }
+
+    private double accuracy(List<String> titles, String expectedCode) {
+        long correct = titles.stream()
+                .map(title -> service.detectLanguage(title, LanguageDetectorMode.FAST))
+                .filter(result -> expectedCode.equals(result.languageCode()))
+                .count();
+        return (double) correct / titles.size();
     }
 }

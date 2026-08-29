@@ -62,3 +62,10 @@ dependency-reduced-pom.xml
 
 # Dependencias externas locales
 Libs/
+
+# Corpus and generated artifacts used only during local language-model training
+tools/language-model/datasets/openlid-four-language.csv
+tools/language-model/data/music4all-raw/
+tools/language-model/data/music-real.csv
+tools/language-model/build-*/
+tools/language-model/build-music-comparison/
