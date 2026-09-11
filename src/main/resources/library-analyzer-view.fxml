@@ -98,7 +98,10 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <children>
                     <FontIcon iconLiteral="mdi2c-content-copy" iconSize="18" />
-                    <Label text="Grupos de Canciones Duplicadas" styleClass="card-title" />
+                    <VBox spacing="2">
+                        <Label text="Revisión de duplicados" styleClass="card-title" />
+                        <Label text="Compara las versiones, escúchalas y marca solo las copias que quieres enviar a cuarentena." styleClass="card-subtitle" />
+                    </VBox>
                     <Region HBox.hgrow="ALWAYS" />
                     <Button fx:id="btnKeepOriginal" mnemonicParsing="false" onAction="#onKeepOriginal" text="Conservar original" styleClass="button, sm">
                         <graphic>
@@ -118,25 +121,22 @@
                 </children>
             </HBox>
 
-            <TreeTableView fx:id="resultsTreeTable" VBox.vgrow="ALWAYS" showRoot="false" maxHeight="1.7976931348623157E308">
-                <columns>
-                    <TreeTableColumn fx:id="colSelect" prefWidth="50" resizable="false" text="Sel" />
-                    <TreeTableColumn fx:id="colName" prefWidth="240" text="Nombre / Grupo" />
-                    <TreeTableColumn fx:id="colArtist" prefWidth="140" text="Artista" />
-                    <TreeTableColumn fx:id="colDuration" prefWidth="80" text="Duración" />
-                    <TreeTableColumn fx:id="colSize" prefWidth="90" text="Tamaño" />
-                    <TreeTableColumn fx:id="colType" prefWidth="70" text="Tipo" />
-                    <TreeTableColumn fx:id="colLanguage" prefWidth="100" text="Idioma" />
-                    <TreeTableColumn fx:id="colStatus" prefWidth="130" text="Estado" />
-                    <TreeTableColumn fx:id="colPath" prefWidth="250" text="Ruta" />
-                </columns>
-                <columnResizePolicy>
-                    <TreeTableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
-                </columnResizePolicy>
-            </TreeTableView>
+            <ScrollPane fx:id="duplicateGroupsScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                        styleClass="duplicate-groups-scroll" VBox.vgrow="ALWAYS" maxHeight="1.7976931348623157E308">
+                <content>
+                    <VBox fx:id="duplicateGroupsContainer" spacing="10" fillWidth="true" styleClass="duplicate-groups-container">
+                        <Label text="Analiza una carpeta para ver las canciones que parecen duplicadas." styleClass="empty-duplicates-state" wrapText="true" />
+                    </VBox>
+                </content>
+            </ScrollPane>
 
-            <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 0 0 2 0;">
+            <HBox spacing="12" alignment="CENTER_LEFT" style="-fx-padding: 4 0 2 0;">
                 <children>
+                    <HBox spacing="10" alignment="CENTER_LEFT" styleClass="duplicate-legend">
+                        <Label text="ORIGINAL RECOMENDADO" styleClass="duplicate-legend-original" />
+                        <Label text="COPIA MARCADA" styleClass="duplicate-legend-delete" />
+                    </HBox>
+                    <Region HBox.hgrow="ALWAYS" />
                     <Label fx:id="selectedSummaryLabel" text="0 duplicados seleccionados para mover" styleClass="folder-path-text" />
                     <Button fx:id="btnMoveToTrash" mnemonicParsing="false" onAction="#onMoveToTrash" text="Mover duplicados a cuarentena" styleClass="button, danger">
                         <graphic>

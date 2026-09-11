@@ -73,10 +73,16 @@ public class AnalyzerRowModel {
     }
 
     public String getDisplayName() {
-        if (candidate != null && candidate.isOriginal()) {
-            return "🛡️ " + name;
+        if (candidate == null) {
+            return "GRUPO · " + name;
         }
-        return name;
+        if (candidate.isOriginal()) {
+            return "ORIGINAL · " + name;
+        }
+        if (candidate.isSelectedForDeletion()) {
+            return "ELIMINAR · " + name;
+        }
+        return "COPIA · " + name;
     }
 
     public String getStatusClean() {
@@ -108,7 +114,7 @@ public class AnalyzerRowModel {
             } else {
                 sb.append("Similitud con el original: ").append(candidate.getSimilarityPercentage()).append("%\n");
                 sb.append("Puntuación de calidad: ").append(candidate.getOriginalScore()).append(" pts\n");
-                sb.append("Acción: ").append(candidate.isSelectedForDeletion() ? "Marcado para mover a cuarentena" : "Se conservará").append("\n");
+            sb.append("Estado: ").append(candidate.isSelectedForDeletion() ? "Marcado para mover a cuarentena" : "Se conservará").append("\n");
             }
             if (candidate.getScoreReasons() != null && !candidate.getScoreReasons().isEmpty()) {
                 sb.append("Criterios del análisis:\n• ").append(String.join("\n• ", candidate.getScoreReasons()));

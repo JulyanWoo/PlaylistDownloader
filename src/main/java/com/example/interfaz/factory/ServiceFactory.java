@@ -330,6 +330,17 @@ public class ServiceFactory {
             }
         }
 
+        if (libraryAnalyzerPresenter != null) {
+            try {
+                libraryAnalyzerPresenter.close();
+                LOGGER.info("LibraryAnalyzerPresenter liberado correctamente en ServiceFactory.shutdown()");
+            } catch (Exception e) {
+                LOGGER.error("Error al cerrar LibraryAnalyzerPresenter en shutdown", e);
+            } finally {
+                libraryAnalyzerPresenter = null;
+            }
+        }
+
         if (libraryAnalyzerFacade != null) {
             try {
                 libraryAnalyzerFacade.close();

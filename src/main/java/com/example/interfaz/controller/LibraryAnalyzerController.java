@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import com.example.interfaz.factory.ServiceFactory;
 import com.example.interfaz.model.analyzer.LanguageDetectorMode;
-import com.example.interfaz.service.ui.analyzer.AnalyzerRowModel;
 import com.example.interfaz.service.ui.analyzer.LanguageSongRowModel;
 import com.example.interfaz.service.ui.analyzer.LibraryAnalyzerPresenter;
 import com.example.interfaz.service.ui.analyzer.LibraryAnalyzerViewControls;
@@ -20,8 +19,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.TreeTableColumn;
-import javafx.scene.control.TreeTableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -47,16 +44,7 @@ public class LibraryAnalyzerController implements AutoCloseable {
     @FXML private Label lblStatDuration;
 
     @FXML private TitledPane duplicatesPane;
-    @FXML private TreeTableView<AnalyzerRowModel> resultsTreeTable;
-    @FXML private TreeTableColumn<AnalyzerRowModel, Boolean> colSelect;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colName;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colArtist;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colDuration;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colSize;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colType;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colLanguage;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colStatus;
-    @FXML private TreeTableColumn<AnalyzerRowModel, String> colPath;
+    @FXML private VBox duplicateGroupsContainer;
 
     @FXML private Label selectedSummaryLabel;
     @FXML private Button btnKeepOriginal;
@@ -99,8 +87,7 @@ public class LibraryAnalyzerController implements AutoCloseable {
                 progressBox, progressBar, statusLabel, duplicatesFoundLabel, timeRemainingLabel,
                 statsBox, lblStatTotalSongs, lblStatTotalFiles, lblStatGroups, lblStatRecoverableSpace, lblStatDuration,
                 selectedSummaryLabel, lblLangBrowserSummary,
-                duplicatesPane, resultsTreeTable,
-                colSelect, colName, colArtist, colDuration, colSize, colType, colLanguage, colStatus, colPath,
+                duplicatesPane, duplicateGroupsContainer,
                 languageBrowserPane, cmbLangFilter, txtLangSearch, lblLangCount,
                 langBrowserTable, colLangSelect, colLangName, colLangArtist, colLangLang,
                 colLangConf, colLangMethod, colLangFormat, colLangSize, colLangPath
