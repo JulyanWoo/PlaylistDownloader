@@ -20,7 +20,6 @@ import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
 import javafx.scene.control.Label;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.TreeTableView;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -34,8 +33,9 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
     private final AnalyzerTableConfigurator tableConfigurator;
     private final LanguageBrowserTableConfigurator languageConfigurator;
     private final DialogService dialogService;
+    private final AudioPreviewService audioPreviewService = new AudioPreviewService();
 
-    private TreeTableView<AnalyzerRowModel> resultsTreeTable;
+    private VBox duplicateGroupsContainer;
     private TitledPane duplicatesPane;
     private TitledPane languageBrowserPane;
     private Label lblLangCount;
@@ -60,7 +60,7 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
         if (controls == null) return;
 
         this.duplicatesPane = controls.duplicatesPane();
-        this.resultsTreeTable = controls.resultsTreeTable();
+        this.duplicateGroupsContainer = controls.duplicateGroupsContainer();
         this.languageBrowserPane = controls.languageBrowserPane();
         this.lblLangCount = controls.lblLangCount();
 
@@ -90,9 +90,11 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
 
         if (tableConfigurator != null) {
             tableConfigurator.configure(
-                    controls.resultsTreeTable(),
-                    controls.colSelect(), controls.colName(), controls.colArtist(), controls.colDuration(), controls.colSize(), controls.colType(), controls.colLanguage(), controls.colStatus(), controls.colPath(),
-                    this::updateSelectedSummary
+                    controls.duplicateGroupsContainer(),
+                    this::onDuplicateSelectionChanged,
+                    this::togglePreview,
+                    candidate -> candidate != null && candidate.getSongFile() != null
+                            && audioPreviewService.isPlaying(candidate.getSongFile().getPath())
             );
         }
 
@@ -164,8 +166,8 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
     }
 
     public void refreshTable() {
-        if (tableConfigurator != null && resultsTreeTable != null && viewModel != null) {
-            tableConfigurator.populate(resultsTreeTable, viewModel.getCurrentGroups());
+        if (tableConfigurator != null && duplicateGroupsContainer != null && viewModel != null) {
+            tableConfigurator.populate(duplicateGroupsContainer, viewModel.getCurrentGroups());
         }
         if (duplicatesPane != null && viewModel != null) {
             int count = viewModel.getCurrentGroups().size();
@@ -184,6 +186,29 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
             var summary = facade.calculateSelectionSummary(viewModel.getCurrentGroups());
             viewModel.selectedSummaryTextProperty().set(summary.getFormattedSummary());
         }
+    }
+
+    private void onDuplicateSelectionChanged() {
+        updateSelectedSummary();
+        refreshTable();
+    }
+
+    private void togglePreview(DuplicateCandidate candidate) {
+        if (candidate == null || candidate.getSongFile() == null || candidate.getSongFile().getPath() == null) {
+            return;
+        }
+
+        audioPreviewService.toggle(
+                candidate.getSongFile().getPath(),
+                this::refreshTable,
+                error -> {
+                    String message = error.getMessage() == null ? "El archivo no se pudo reproducir." : error.getMessage();
+                    LOGGER.warn("No se pudo reproducir la vista previa de {}", candidate.getSongFile().getPath(), error);
+                    if (dialogService != null) {
+                        dialogService.showWarning("No se pudo reproducir", message);
+                    }
+                }
+        );
     }
 
     public void startAnalysis() {
@@ -313,6 +338,7 @@ public class LibraryAnalyzerPresenter implements AutoCloseable {
         if (facade != null) {
             facade.unsubscribeFromEvents();
         }
+        audioPreviewService.close();
         LOGGER.info("LibraryAnalyzerPresenter liberado.");
     }
 }

@@ -10,8 +10,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.TreeTableColumn;
-import javafx.scene.control.TreeTableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -33,16 +31,7 @@ public record LibraryAnalyzerViewControls(
         Label selectedSummaryLabel,
         Label lblLangBrowserSummary,
         TitledPane duplicatesPane,
-        TreeTableView<AnalyzerRowModel> resultsTreeTable,
-        TreeTableColumn<AnalyzerRowModel, Boolean> colSelect,
-        TreeTableColumn<AnalyzerRowModel, String> colName,
-        TreeTableColumn<AnalyzerRowModel, String> colArtist,
-        TreeTableColumn<AnalyzerRowModel, String> colDuration,
-        TreeTableColumn<AnalyzerRowModel, String> colSize,
-        TreeTableColumn<AnalyzerRowModel, String> colType,
-        TreeTableColumn<AnalyzerRowModel, String> colLanguage,
-        TreeTableColumn<AnalyzerRowModel, String> colStatus,
-        TreeTableColumn<AnalyzerRowModel, String> colPath,
+        VBox duplicateGroupsContainer,
         TitledPane languageBrowserPane,
         ComboBox<String> cmbLangFilter,
         TextField txtLangSearch,
