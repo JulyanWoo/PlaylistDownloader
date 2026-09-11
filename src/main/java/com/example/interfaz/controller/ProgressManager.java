@@ -189,6 +189,34 @@ public class ProgressManager {
 
     public void updateStatus(String status) {
         LOGGER.debug("Estado: {}", status);
+        Platform.runLater(() -> {
+            if (activeSubtitleLabel != null && status != null && !status.isBlank()) {
+                if (status.startsWith("RATE_LIMIT_RETRY:")) {
+                    activeSubtitleLabel.setText("YouTube limitó temporalmente la descarga. Reintentando automáticamente...");
+                } else if (status.startsWith("AUTOMATIC_RETRY:")) {
+                    String[] parts = status.split(":");
+                    String seconds = parts.length > 1 ? parts[1] : "";
+                    activeSubtitleLabel.setText("Conexión interrumpida. Continuará automáticamente"
+                            + (seconds.isBlank() ? "..." : " en " + seconds + " s..."));
+                } else if (status.startsWith("AUTOMATIC_RETRY_EXHAUSTED:")) {
+                    activeSubtitleLabel.setText("No fue posible continuar después de 3 intentos automáticos.");
+                } else if (status.startsWith("BATCH_PAUSE:")) {
+                    String[] parts = status.split(":");
+                    String seconds = parts.length > 1 ? parts[1] : "45";
+                    String next = parts.length > 2 ? parts[2] : "";
+                    String total = parts.length > 3 ? parts[3] : "";
+                    String suffix = next.isBlank() || total.isBlank() ? "" : " Siguiente: " + next + " de " + total + ".";
+                    activeSubtitleLabel.setText("Bloque completado. Pausa preventiva de " + seconds + " s." + suffix);
+                } else if (status.startsWith("BATCH_START:")) {
+                    String[] parts = status.split(":");
+                    if (parts.length >= 4) {
+                        activeSubtitleLabel.setText("Descargando canciones " + parts[1] + "–" + parts[2] + " de " + parts[3]);
+                    }
+                } else {
+                    activeSubtitleLabel.setText(status);
+                }
+            }
+        });
     }
 
     public void ensureActiveCardCreated() {
@@ -367,6 +395,18 @@ public class ProgressManager {
         Platform.runLater(() -> {
             if (activeTitleLabel != null) {
                 addCompletedCard(activeTitleLabel.getText(), activeTitleLabel.getText());
+            }
+            if (activeDownloadsContainer != null) {
+                activeDownloadsContainer.getChildren().clear();
+            }
+        });
+    }
+
+    public void markDownloadFailed(String message) {
+        Platform.runLater(() -> {
+            if (completedDownloadsContainer != null) {
+                completedDownloadsContainer.getChildren().add(
+                        DownloadCardFactory.createFailedCard(currentSongTitle, message));
             }
             if (activeDownloadsContainer != null) {
                 activeDownloadsContainer.getChildren().clear();

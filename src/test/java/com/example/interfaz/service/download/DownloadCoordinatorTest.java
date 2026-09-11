@@ -6,6 +6,8 @@ import com.example.interfaz.event.EventBus;
 import com.example.interfaz.model.Song;
 import com.example.interfaz.service.DownloadService;
 import com.example.interfaz.service.YouTubeDownloadService;
+import com.example.interfaz.util.FileUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +19,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DownloadCoordinatorTest {
+
+    @AfterEach
+    void resetMusicDirectory() {
+        FileUtils.setMusicDirectory(null);
+    }
+
+    @Test
+    void duplicateTitlesReceiveStableVideoIdSuffix(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) {
+        try (DownloadCoordinator coordinator = new DownloadCoordinator(new YouTubeDownloadService(), new QueueManager(), new EventBus())) {
+            java.io.File firstRaw = new java.io.File(tempDir, "raw_AAAAAAAAAAA___Same title.webm");
+            java.io.File secondRaw = new java.io.File(tempDir, "raw_BBBBBBBBBBB___Same title.webm");
+            java.io.File first = coordinator.reserveTargetFile(tempDir.getAbsolutePath(), "Same title", firstRaw);
+            java.io.File second = coordinator.reserveTargetFile(tempDir.getAbsolutePath(), "Same title", secondRaw);
+            assertEquals("Same title.mp3", first.getName());
+            assertEquals("Same title [BBBBBBBBBBB].mp3", second.getName());
+        }
+    }
 
     @Test
     void testDownloadCoordinatorQueueOperations() {
@@ -187,6 +206,7 @@ class DownloadCoordinatorTest {
 
     @Test
     void testPipelineModeExecution(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        FileUtils.setMusicDirectory(tempDir.getAbsolutePath());
         EventBus eventBus = new EventBus();
         QueueManager queueManager = new QueueManager();
 
@@ -322,6 +342,7 @@ class DownloadCoordinatorTest {
 
     @Test
     void testPipelineMultipleTracksInPlaylistHaveDistinctTitles(@org.junit.jupiter.api.io.TempDir java.io.File tempDir) throws Exception {
+        FileUtils.setMusicDirectory(tempDir.getAbsolutePath());
         EventBus eventBus = new EventBus();
         QueueManager queueManager = new QueueManager();
 
@@ -380,8 +401,8 @@ class DownloadCoordinatorTest {
 
             Thread.sleep(600);
 
-            assertTrue(convertedFiles.contains("Song One.mp3"), "Debe haber convertido Song One.mp3");
-            assertTrue(convertedFiles.contains("Song Two.mp3"), "Debe haber convertido Song Two.mp3");
+            assertTrue(convertedFiles.stream().anyMatch(name -> name.startsWith("Song One")), "Debe haber convertido Song One sin sobrescribir archivos existentes");
+            assertTrue(convertedFiles.stream().anyMatch(name -> name.startsWith("Song Two")), "Debe haber convertido Song Two sin sobrescribir archivos existentes");
             assertNotEquals(convertedFiles.get(0), convertedFiles.get(1), "Los dos archivos MP3 convertidos deben tener nombres distintos");
 
             assertTrue(completedTitles.contains("Song One"));

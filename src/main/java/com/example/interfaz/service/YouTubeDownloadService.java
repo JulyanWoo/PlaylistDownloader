@@ -8,7 +8,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +22,16 @@ import com.example.interfaz.service.download.ProcessExecutor;
 import com.example.interfaz.service.download.SongMetadataService;
 import com.example.interfaz.service.download.YtDlpCommandBuilder;
 import com.example.interfaz.util.FileUtils;
+import com.example.interfaz.util.ThumbnailUtils;
 
 public class YouTubeDownloadService implements DownloadService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(YouTubeDownloadService.class);
+    static final int PLAYLIST_BATCH_SIZE = 50;
+    static final long PLAYLIST_BATCH_PAUSE_SECONDS = 45L;
+    static final int MAX_AUTOMATIC_BATCH_ATTEMPTS = 3;
+    static final long MAX_AUTOMATIC_RETRY_SECONDS = 600L;
+    private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
 
     private final ProgressReporter progressReporter;
     private final YtDlpCommandBuilder commandBuilder;
@@ -34,6 +42,7 @@ public class YouTubeDownloadService implements DownloadService {
     private final Object downloadLock = new Object();
     private volatile CompletableFuture<Boolean> currentDownload;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
     public YouTubeDownloadService() {
         this(new ProgressReporter(), new YtDlpCommandBuilder(new BinaryResolver()), new ProcessExecutor(),
@@ -169,18 +178,101 @@ public class YouTubeDownloadService implements DownloadService {
 
     public boolean downloadRawAudioStreaming(String url, String stagingDir, Consumer<File> onFileCompleted) {
         try {
+            stopRequested.set(false);
             File stagingFolder = new File(stagingDir);
             if (!stagingFolder.exists()) {
                 stagingFolder.mkdirs();
             }
 
-            List<String> cmd = this.commandBuilder.buildRawAudioDownloadCommand(url, stagingDir);
             java.util.Set<String> dispatchedFiles = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
-            java.util.concurrent.atomic.AtomicReference<String> currentDestination = new java.util.concurrent.atomic.AtomicReference<>();
+            dispatchRemainingRawFiles(stagingFolder, dispatchedFiles, onFileCompleted);
 
+            if (!ThumbnailUtils.isPlaylistUrl(url)) {
+                return executeRawBatch(url, stagingDir, null, null, null, stagingFolder, dispatchedFiles,
+                        onFileCompleted);
+            }
+
+            int playlistSize = resolvePlaylistSize(url);
+            if (stopRequested.get()) {
+                return false;
+            }
+            if (playlistSize <= 0) {
+                LOGGER.warn("No se pudo determinar el tamaño de la playlist; se usará una sola ejecución sin pausas por petición.");
+                return executeRawBatch(url, stagingDir, null, null, null, stagingFolder, dispatchedFiles,
+                        onFileCompleted);
+            }
+
+            LOGGER.info("Playlist de {} canciones: descarga en bloques de {} con pausas de {} segundos.",
+                    playlistSize, PLAYLIST_BATCH_SIZE, PLAYLIST_BATCH_PAUSE_SECONDS);
+            for (int batchStart = 1; batchStart <= playlistSize && !stopRequested.get(); batchStart += PLAYLIST_BATCH_SIZE) {
+                int batchEnd = Math.min(batchStart + PLAYLIST_BATCH_SIZE - 1, playlistSize);
+                int dispatchedBeforeBatch = dispatchedFiles.size();
+                notifyProgress("BATCH_START:" + batchStart + ":" + batchEnd + ":" + playlistSize);
+
+                boolean batchSuccess = executeRawBatch(url, stagingDir, batchStart, batchEnd, playlistSize, stagingFolder,
+                        dispatchedFiles, onFileCompleted);
+                if (!batchSuccess) {
+                    return false;
+                }
+
+                boolean downloadedFiles = dispatchedFiles.size() > dispatchedBeforeBatch;
+                boolean hasNextBatch = batchEnd < playlistSize;
+                if (hasNextBatch && downloadedFiles) {
+                    int nextStart = batchEnd + 1;
+                    notifyProgress("BATCH_PAUSE:" + PLAYLIST_BATCH_PAUSE_SECONDS + ":" + nextStart + ":" + playlistSize);
+                    LOGGER.info("Bloque {}-{} completado. Pausa de {} segundos antes del siguiente bloque.",
+                            batchStart, batchEnd, PLAYLIST_BATCH_PAUSE_SECONDS);
+                    waitInterruptibly(PLAYLIST_BATCH_PAUSE_SECONDS);
+                }
+            }
+
+            dispatchRemainingRawFiles(stagingFolder, dispatchedFiles, onFileCompleted);
+            return !stopRequested.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.info("Descarga de audio crudo cancelada por interrupción");
+            notifyProgress("Error: Descarga cancelada");
+            throw new DownloadException("Descarga cancelada por interrupción", e);
+        } catch (IOException e) {
+            LOGGER.error("Error de E/S durante la descarga de audio crudo", e);
+            notifyProgress("Error: " + e.getMessage());
+            throw new DownloadException("Error de E/S al ejecutar proceso de descarga: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean executeRawBatch(String url, String stagingDir, Integer playlistStart, Integer playlistEnd,
+            Integer playlistTotal, File stagingFolder, java.util.Set<String> dispatchedFiles,
+            Consumer<File> onFileCompleted)
+            throws IOException, InterruptedException {
+        int attempt = 0;
+        while (!stopRequested.get() && attempt < MAX_AUTOMATIC_BATCH_ATTEMPTS) {
+            attempt++;
+            java.util.concurrent.atomic.AtomicReference<String> currentDestination = new java.util.concurrent.atomic.AtomicReference<>();
+            java.util.concurrent.atomic.AtomicBoolean rateLimited = new java.util.concurrent.atomic.AtomicBoolean(false);
+            java.util.concurrent.atomic.AtomicBoolean batchTraversalCompleted = new java.util.concurrent.atomic.AtomicBoolean(false);
+            java.util.concurrent.atomic.AtomicBoolean permanentSourceError = new java.util.concurrent.atomic.AtomicBoolean(false);
+            AtomicInteger errorLines = new AtomicInteger();
+            AtomicInteger unavailableItems = new AtomicInteger();
             Consumer<String> rawLineListener = line -> {
                 if (line == null) return;
                 String trimmed = line.trim();
+                String normalized = trimmed.toLowerCase(java.util.Locale.ROOT);
+
+                if (isRateLimitMessage(normalized)) {
+                    rateLimited.set(true);
+                }
+                if (normalized.contains("finished downloading playlist")) {
+                    batchTraversalCompleted.set(true);
+                }
+                if (normalized.startsWith("error:")) {
+                    errorLines.incrementAndGet();
+                }
+                if (isUnavailableItemMessage(normalized)) {
+                    unavailableItems.incrementAndGet();
+                }
+                if (isPermanentSourceError(normalized)) {
+                    permanentSourceError.set(true);
+                }
 
                 if (trimmed.startsWith("[download] Destination:")) {
                     String pathStr = trimmed.substring("[download] Destination:".length()).trim();
@@ -195,16 +287,132 @@ public class YouTubeDownloadService implements DownloadService {
                     }
                 }
 
-                progressReporter.processDownloadLine(line);
+                if (playlistStart != null && playlistTotal != null) {
+                    progressReporter.processDownloadLine(line, playlistStart - 1, playlistTotal);
+                } else {
+                    progressReporter.processDownloadLine(line);
+                }
             };
 
-            boolean success = processExecutor.execute(
-                    cmd,
+            boolean processSuccess = processExecutor.execute(
+                    this.commandBuilder.buildRawAudioDownloadCommand(url, stagingDir, null, playlistStart, playlistEnd),
                     rawLineListener,
                     this::notifyProgress
             );
+            dispatchRemainingRawFiles(stagingFolder, dispatchedFiles, onFileCompleted);
 
-            File[] files = stagingFolder.listFiles((dir, name) -> name.startsWith("raw_"));
+            if (processSuccess) {
+                return true;
+            }
+            if (stopRequested.get()) {
+                return false;
+            }
+            int retryableErrors = Math.max(0, errorLines.get() - unavailableItems.get());
+            if (batchTraversalCompleted.get() && !rateLimited.get() && retryableErrors == 0) {
+                if (unavailableItems.get() > 0) {
+                    LOGGER.warn("Bloque {}-{} completado omitiendo {} video(s) no disponible(s); la descarga continuará automáticamente.",
+                            playlistStart, playlistEnd, unavailableItems.get());
+                } else {
+                    LOGGER.info("yt-dlp devolvió código de advertencia después de recorrer completamente el bloque {}-{}; se continúa con el siguiente bloque.",
+                            playlistStart, playlistEnd);
+                }
+                return true;
+            }
+            if (permanentSourceError.get()) {
+                LOGGER.error("La fuente de YouTube no puede recuperarse automáticamente: {}", url);
+                return false;
+            }
+
+            if (attempt >= MAX_AUTOMATIC_BATCH_ATTEMPTS) {
+                LOGGER.error("El bloque {}-{} no pudo completarse después de {} intentos automáticos. No se harán más reintentos.",
+                        playlistStart, playlistEnd, MAX_AUTOMATIC_BATCH_ATTEMPTS);
+                notifyProgress("AUTOMATIC_RETRY_EXHAUSTED:" + MAX_AUTOMATIC_BATCH_ATTEMPTS);
+                return false;
+            }
+
+            long waitSeconds = automaticRetryDelaySeconds(attempt, rateLimited.get());
+            if (rateLimited.get()) {
+                notifyProgress("RATE_LIMIT_RETRY:" + waitSeconds);
+                LOGGER.warn("YouTube limitó temporalmente la descarga. Reintento automático #{} en {} segundos; el progreso se conserva.",
+                        attempt + 1, waitSeconds);
+            } else {
+                notifyProgress("AUTOMATIC_RETRY:" + waitSeconds + ":" + (attempt + 1));
+                LOGGER.warn("El bloque {}-{} quedó incompleto. Reintento automático #{} en {} segundos; el progreso se conserva.",
+                        playlistStart, playlistEnd, attempt + 1, waitSeconds);
+            }
+            waitInterruptibly(waitSeconds);
+        }
+        return false;
+    }
+
+    private boolean isRateLimitMessage(String normalizedLine) {
+        return normalizedLine.contains("rate-limited")
+                || normalizedLine.contains("rate limit")
+                || normalizedLine.contains("http error 429")
+                || normalizedLine.contains("too many requests");
+    }
+
+    private boolean isUnavailableItemMessage(String normalizedLine) {
+        return normalizedLine.startsWith("error:")
+                && (normalizedLine.contains("video unavailable")
+                    || normalizedLine.contains("private video")
+                    || normalizedLine.contains("members-only")
+                    || normalizedLine.contains("this video is not available")
+                    || normalizedLine.contains("not available in your country")
+                    || normalizedLine.contains("has been removed")
+                    || normalizedLine.contains("uploader has closed")
+                    || normalizedLine.contains("account has been terminated")
+                    || normalizedLine.contains("has been terminated")
+                    || normalizedLine.contains("join this channel")
+                    || normalizedLine.contains("age-restricted"));
+    }
+
+    private boolean isPermanentSourceError(String normalizedLine) {
+        return normalizedLine.contains("playlist does not exist")
+                || normalizedLine.contains("this playlist is private")
+                || normalizedLine.contains("unsupported url")
+                || normalizedLine.contains("invalid url");
+    }
+
+    static long automaticRetryDelaySeconds(int failedAttempt, boolean rateLimited) {
+        if (rateLimited) {
+            if (failedAttempt == 1) return 30L;
+            if (failedAttempt == 2) return 120L;
+            if (failedAttempt == 3) return 300L;
+            return MAX_AUTOMATIC_RETRY_SECONDS;
+        }
+        long multiplier = 1L << Math.min(Math.max(failedAttempt - 1, 0), 5);
+        return Math.min(15L * multiplier, 300L);
+    }
+
+    private int resolvePlaylistSize(String playlistUrl) throws IOException, InterruptedException {
+        AtomicInteger count = new AtomicInteger();
+        boolean success = processExecutor.execute(
+                commandBuilder.buildPlaylistVideoIdCommand(playlistUrl),
+                line -> {
+                    if (line != null && VIDEO_ID.matcher(line.trim()).matches()) {
+                        count.incrementAndGet();
+                    }
+                },
+                null);
+        if (!success) {
+            return 0;
+        }
+        return count.get();
+    }
+
+    protected void waitInterruptibly(long seconds) throws InterruptedException {
+        long remainingMillis = seconds * 1000L;
+        while (remainingMillis > 0 && !stopRequested.get()) {
+            long slice = Math.min(remainingMillis, 1000L);
+            Thread.sleep(slice);
+            remainingMillis -= slice;
+        }
+    }
+
+    private void dispatchRemainingRawFiles(File stagingFolder, java.util.Set<String> dispatchedFiles,
+            Consumer<File> onFileCompleted) {
+        File[] files = stagingFolder.listFiles((dir, name) -> name.startsWith("raw_"));
             if (files != null) {
                 for (File f : files) {
                     if (dispatchedFiles.add(f.getAbsolutePath())) {
@@ -214,18 +422,6 @@ public class YouTubeDownloadService implements DownloadService {
                     }
                 }
             }
-
-            return success;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.info("Descarga de audio crudo cancelada por interrupción");
-            notifyProgress("Error: Descarga cancelada");
-            throw new DownloadException("Descarga cancelada por interrupción", e);
-        } catch (IOException e) {
-            LOGGER.error("Error de E/S durante la descarga de audio crudo", e);
-            notifyProgress("Error: " + e.getMessage());
-            throw new DownloadException("Error de E/S al ejecutar proceso de descarga: " + e.getMessage(), e);
-        }
     }
 
     private void checkAndDispatchFile(String pathStr, java.util.Set<String> dispatchedFiles, Consumer<File> onFileCompleted) {
@@ -310,6 +506,7 @@ public class YouTubeDownloadService implements DownloadService {
 
     @Override
     public void stopDownload() {
+        stopRequested.set(true);
         CompletableFuture<Boolean> future;
         synchronized (downloadLock) {
             future = currentDownload;
