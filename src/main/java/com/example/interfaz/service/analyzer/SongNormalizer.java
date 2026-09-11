@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.example.interfaz.model.analyzer.ParsedTrackName;
+
 public class SongNormalizer {
 
     public record ParsedMetadata(String artist, String title, Set<String> modifiers) {}
@@ -21,6 +23,8 @@ public class SongNormalizer {
     private static final Pattern BRACKETS_PATTERN = Pattern.compile("[\\[\\](){}]");
     private static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-z0-9\\s]");
     private static final Pattern MULTI_SPACE_PATTERN = Pattern.compile("\\s+");
+
+    private final TitleParserService titleParser = new TitleParserService();
 
     public String normalize(String text) {
         if (text == null || text.isBlank()) {
@@ -62,24 +66,12 @@ public class SongNormalizer {
         String combinedForModifiers = (fileName != null ? fileName : "") + " " + artist + " " + title;
         Set<String> modifiers = extractModifiers(combinedForModifiers);
 
-        if (artist.isEmpty() || title.isEmpty()) {
-            String nameNoExt = fileName != null ? fileName : "";
-            int dotIdx = nameNoExt.lastIndexOf('.');
-            if (dotIdx > 0) {
-                nameNoExt = nameNoExt.substring(0, dotIdx);
-            }
-
-            if (nameNoExt.contains(" - ")) {
-                String[] parts = nameNoExt.split(" - ", 2);
-                if (artist.isEmpty()) {
-                    artist = parts[0];
-                }
-                if (title.isEmpty()) {
-                    title = parts[1];
-                }
-            } else if (title.isEmpty()) {
-                title = nameNoExt;
-            }
+        ParsedTrackName parsedName = titleParser.parse(fileName);
+        if (artist.isEmpty()) {
+            artist = parsedName.artist();
+        }
+        if (title.isEmpty()) {
+            title = parsedName.title();
         }
 
         return new ParsedMetadata(normalize(artist), normalize(title), modifiers);
