@@ -32,13 +32,17 @@ public class ProgressReporter {
      * Processes one line of yt-dlp output and fires the appropriate event.
      */
     public void processDownloadLine(String line) {
+        processDownloadLine(line, 0, 0);
+    }
+
+    public void processDownloadLine(String line, int playlistOffset, int playlistTotal) {
         if (line == null || line.trim().isEmpty()) {
             return;
         }
 
         try {
             if (line.contains("[download] Downloading item")) {
-                handlePlaylistProgress(line);
+                handlePlaylistProgress(line, playlistOffset, playlistTotal);
             } else if (line.contains("[download]")) {
                 handleDownloadProgress(line);
             } else if (line.contains("[ffmpeg]")) {
@@ -49,12 +53,16 @@ public class ProgressReporter {
         }
     }
 
-    private void handlePlaylistProgress(String line) {
+    private void handlePlaylistProgress(String line, int playlistOffset, int playlistTotal) {
         Pattern p = Pattern.compile("\\[download\\] Downloading item (\\d+) of (\\d+)");
         Matcher m = p.matcher(line);
         if (m.find()) {
-            notifyProgress("PLAYLIST_PROGRESS:" + m.group(1) + "/" + m.group(2));
-            notifyProgress("SONG_START:" + m.group(1) + "/" + m.group(2));
+            int localItem = Integer.parseInt(m.group(1));
+            int localTotal = Integer.parseInt(m.group(2));
+            int currentItem = playlistOffset > 0 ? playlistOffset + localItem : localItem;
+            int totalItems = playlistTotal > 0 ? playlistTotal : localTotal;
+            notifyProgress("PLAYLIST_PROGRESS:" + currentItem + "/" + totalItems);
+            notifyProgress("SONG_START:" + currentItem + "/" + totalItems);
         }
     }
 

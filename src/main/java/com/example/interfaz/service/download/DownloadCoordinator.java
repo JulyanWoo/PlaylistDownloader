@@ -13,6 +13,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,8 @@ public class DownloadCoordinator implements AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean downloadsFinished = new AtomicBoolean(true);
     private final AtomicInteger activeConversions = new AtomicInteger(0);
+    private final AtomicBoolean lastRunSuccessful = new AtomicBoolean(true);
+    private final Set<Path> reservedTargetPaths = ConcurrentHashMap.newKeySet();
 
     private volatile boolean isPaused = false;
     private final Object pauseLock = new Object();
@@ -161,6 +165,7 @@ public class DownloadCoordinator implements AutoCloseable {
         }
 
         downloadsFinished.set(false);
+        lastRunSuccessful.set(true);
         publishEvent(new DownloadEvent.StateChanged(true, false));
 
         AtomicReference<Future<?>> futureHolder = new AtomicReference<>();
@@ -194,12 +199,13 @@ public class DownloadCoordinator implements AutoCloseable {
 
                                         String trackTitle = resolveTrackTitle(rawAudio, finalSong);
                                         String safeTitle = sanitizeFilename(trackTitle);
-                                        File targetMp3 = new File(musicDir, safeTitle + ".mp3");
+                                        File targetMp3 = reserveTargetFile(musicDir, safeTitle, rawAudio);
 
                                         audioConversionService.convertToMp3(rawAudio, targetMp3, msg -> LOGGER.info("[AudioConversion] {}", msg))
                                                 .whenComplete((resultFile, error) -> {
                                                     try {
                                                         if (error != null || resultFile == null) {
+                                                            lastRunSuccessful.set(false);
                                                             LOGGER.error("Fallo en la conversión de audio para archivo {}: {}", rawAudio.getName(), error);
                                                             queueManager.markAsFailed(finalUrl);
                                                             publishEvent(new DownloadEvent.DownloadFailed(finalSong, error != null ? error.getMessage() : "Error en conversión"));
@@ -211,6 +217,7 @@ public class DownloadCoordinator implements AutoCloseable {
                                                         }
                                                         publishEvent(new DownloadEvent.QueueUpdated());
                                                     } finally {
+                                                        reservedTargetPaths.remove(targetMp3.toPath().toAbsolutePath().normalize());
                                                         activeConversions.decrementAndGet();
                                                         finishIfComplete();
                                                     }
@@ -218,9 +225,13 @@ public class DownloadCoordinator implements AutoCloseable {
                                     }
                                 });
 
-                                if (!success && filesProcessedForUrl.get() == 0) {
+                                if (!success) {
+                                    lastRunSuccessful.set(false);
                                     queueManager.markAsFailed(url);
-                                    publishEvent(new DownloadEvent.DownloadFailed(song, "No se pudo descargar el archivo de audio"));
+                                    String message = filesProcessedForUrl.get() > 0
+                                            ? "La descarga se detuvo por un error no recuperable de la playlist. El progreso procesado se conservó."
+                                            : "No se pudo descargar ningún archivo de audio";
+                                    publishEvent(new DownloadEvent.DownloadFailed(song, message));
                                     publishEvent(new DownloadEvent.QueueUpdated());
                                 }
                             } else {
@@ -296,6 +307,28 @@ public class DownloadCoordinator implements AutoCloseable {
         return sanitized.isEmpty() ? "audio_" + System.currentTimeMillis() : sanitized;
     }
 
+    File reserveTargetFile(String musicDir, String safeTitle, File rawAudio) {
+        File preferred = new File(musicDir, safeTitle + ".mp3");
+        Path preferredPath = preferred.toPath().toAbsolutePath().normalize();
+        if (!preferred.exists() && reservedTargetPaths.add(preferredPath)) {
+            return preferred;
+        }
+        String rawName = rawAudio != null ? rawAudio.getName() : "";
+        String videoId = "copia";
+        if (rawName.startsWith("raw_")) {
+            int separator = rawName.indexOf("___", 4);
+            if (separator > 4) videoId = rawName.substring(4, separator);
+        }
+        int sequence = 1;
+        while (true) {
+            String suffix = sequence == 1 ? " [" + videoId + "]" : " [" + videoId + "-" + sequence + "]";
+            File candidate = new File(musicDir, safeTitle + suffix + ".mp3");
+            Path path = candidate.toPath().toAbsolutePath().normalize();
+            if (!candidate.exists() && reservedTargetPaths.add(path)) return candidate;
+            sequence++;
+        }
+    }
+
     public boolean isDownloading() {
         return running.get() || activeConversions.get() > 0;
     }
@@ -317,6 +350,10 @@ public class DownloadCoordinator implements AutoCloseable {
 
     public boolean isQueueEmpty() {
         return queueManager.isEmpty() && downloadsFinished.get() && activeConversions.get() == 0 && !running.get();
+    }
+
+    public boolean wasLastRunSuccessful() {
+        return lastRunSuccessful.get();
     }
 
     private void finishIfComplete() {
@@ -373,7 +410,11 @@ public class DownloadCoordinator implements AutoCloseable {
                 try (var stream = Files.list(stagingDir)) {
                     stream.forEach(p -> {
                         try {
-                            Files.deleteIfExists(p);
+                            // Preserve .archive and raw audio files so large playlists can resume without re-downloading.
+                            String fileName = p.getFileName().toString();
+                            if (!fileName.endsWith(".archive") && !fileName.startsWith("raw_")) {
+                                Files.deleteIfExists(p);
+                            }
                         } catch (IOException ignored) {
                         }
                     });

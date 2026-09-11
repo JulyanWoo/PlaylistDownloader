@@ -30,6 +30,34 @@ class YtDlpCommandBuilderTest {
         assertFalse(cmd.contains("mp3"));
         assertTrue(cmd.contains("https://www.youtube.com/watch?v=test"));
         assertTrue(cmd.stream().anyMatch(arg -> arg.contains("raw_%(id)s___%(title)s.%(ext)s")));
+        assertTrue(cmd.contains("--download-archive"));
+        assertTrue(cmd.stream().anyMatch(arg -> arg.contains("playlist-") && arg.endsWith(".archive")));
+        assertFalse(cmd.contains("--sleep-requests"));
+        assertFalse(cmd.contains("--sleep-interval"));
+        assertFalse(cmd.contains("--max-sleep-interval"));
+        assertTrue(cmd.contains("--extractor-retries"));
+        assertTrue(cmd.contains("--retry-sleep"));
+        assertTrue(cmd.contains("--ignore-errors"));
+    }
+
+    @Test
+    void testBuildRawAudioDownloadCommandForPlaylistBatch() {
+        YtDlpCommandBuilder builder = new YtDlpCommandBuilder();
+        List<String> cmd = builder.buildRawAudioDownloadCommand(
+                "https://www.youtube.com/playlist?list=test", "C:\\Temp", null, 51, 100);
+
+        assertEquals("51", valueAfter(cmd, "--playlist-start"));
+        assertEquals("100", valueAfter(cmd, "--playlist-end"));
+    }
+
+    @Test
+    void testBuildPlaylistVideoIdCommand() {
+        YtDlpCommandBuilder builder = new YtDlpCommandBuilder();
+        List<String> cmd = builder.buildPlaylistVideoIdCommand("https://www.youtube.com/playlist?list=test");
+
+        assertTrue(cmd.contains("--flat-playlist"));
+        assertTrue(cmd.contains("%(id)s"));
+        assertTrue(cmd.contains("https://www.youtube.com/playlist?list=test"));
     }
 
     @Test
@@ -50,5 +78,11 @@ class YtDlpCommandBuilderTest {
         assertTrue(cmd.contains("--playlist-start"));
         assertTrue(cmd.contains("3"));
         assertTrue(cmd.contains("https://www.youtube.com/playlist?list=test"));
+    }
+
+    private String valueAfter(List<String> command, String option) {
+        int index = command.indexOf(option);
+        assertTrue(index >= 0 && index + 1 < command.size());
+        return command.get(index + 1);
     }
 }

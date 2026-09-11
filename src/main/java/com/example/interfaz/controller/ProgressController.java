@@ -224,6 +224,10 @@ public class ProgressController implements DownloadProgressParser.ProgressListen
         progressManager.markDownloadCompleted();
     }
 
+    public void markDownloadFailed(String message) {
+        progressManager.markDownloadFailed(message);
+    }
+
     public void markDownloadPaused() {
         progressManager.markDownloadPaused();
     }

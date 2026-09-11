@@ -51,6 +51,7 @@ public class AudioConversionService implements AutoCloseable {
         this.conversionExecutor = conversionExecutor;
     }
 
+    // Limit concurrent conversions to balance CPU and disk I/O without overwhelming system resources.
     private static int getMaxConcurrentConversions() {
         int availableProcessors = Math.max(1, Runtime.getRuntime().availableProcessors());
         String configuredValue = ConfigurationManager.getInstance()
@@ -104,6 +105,7 @@ public class AudioConversionService implements AutoCloseable {
                 process = pb.start();
                 activeProcesses.add(process);
 
+                // Drain stdout and stderr asynchronously to prevent FFmpeg from deadlocking on full OS pipe buffers.
                 Process procRef = process;
                 Thread drainer = new Thread(() -> {
                     try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(procRef.getInputStream()))) {
@@ -122,7 +124,6 @@ public class AudioConversionService implements AutoCloseable {
 
                 if (exitCode == 0 && targetMp3File.exists() && targetMp3File.length() > 0) {
                     LOGGER.info("Conversión MP3 exitosa: {}", targetMp3File.getAbsolutePath());
-                    // Cleanup raw temporary file
                     try {
                         Files.deleteIfExists(rawAudioFile.toPath());
                     } catch (IOException e) {
@@ -157,6 +158,7 @@ public class AudioConversionService implements AutoCloseable {
         return future;
     }
 
+    // Strip video stream (-vn) and transcode audio with LAME VBR quality profile 2 (~190 kbps).
     public List<String> buildFfmpegCommand(File rawAudioFile, File targetMp3File) {
         String ffmpegPath = binaryResolver.resolveFfmpegPath();
         List<String> cmd = new ArrayList<>();
@@ -173,6 +175,7 @@ public class AudioConversionService implements AutoCloseable {
         return cmd;
     }
 
+    // Forcibly terminate active FFmpeg processes and their process trees to avoid orphaned OS tasks.
     public void cancelAll() {
         for (Process p : activeProcesses) {
             try {
@@ -187,13 +190,8 @@ public class AudioConversionService implements AutoCloseable {
         LOGGER.info("Todas las conversiones activas de audio fueron canceladas.");
     }
 
+    // Preserve raw audio on failure so it can be reprocessed without re-downloading; delete empty target files.
     private void cleanupFiles(File rawFile, File targetFile) {
-        try {
-            if (rawFile != null && rawFile.exists()) {
-                Files.deleteIfExists(rawFile.toPath());
-            }
-        } catch (IOException ignored) {
-        }
         try {
             if (targetFile != null && targetFile.exists() && targetFile.length() == 0) {
                 Files.deleteIfExists(targetFile.toPath());

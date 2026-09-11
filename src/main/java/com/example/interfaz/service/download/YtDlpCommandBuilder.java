@@ -19,6 +19,11 @@ public class YtDlpCommandBuilder {
 
 
     public List<String> buildRawAudioDownloadCommand(String url, String stagingDir, String baseName) {
+        return buildRawAudioDownloadCommand(url, stagingDir, baseName, null, null);
+    }
+
+    public List<String> buildRawAudioDownloadCommand(String url, String stagingDir, String baseName,
+            Integer playlistStart, Integer playlistEnd) {
         List<String> cmd = new ArrayList<>();
         String ytdlpPath = binaryResolver.resolveYtDlpPath();
         cmd.add(ytdlpPath);
@@ -27,8 +32,23 @@ public class YtDlpCommandBuilder {
         cmd.add("--newline");
         cmd.add("--socket-timeout");
         cmd.add("15");
+        cmd.add("--retries");
+        cmd.add("10");
+        cmd.add("--fragment-retries");
+        cmd.add("10");
+        cmd.add("--extractor-retries");
+        cmd.add("10");
+        cmd.add("--retry-sleep");
+        cmd.add("extractor:exp=5:120");
+        cmd.add("--ignore-errors");
         cmd.add("--extractor-args");
         cmd.add("youtube:player_client=android,web");
+        if (playlistStart != null && playlistEnd != null) {
+            cmd.add("--playlist-start");
+            cmd.add(String.valueOf(playlistStart));
+            cmd.add("--playlist-end");
+            cmd.add(String.valueOf(playlistEnd));
+        }
         cmd.add("-o");
         if (baseName != null && !baseName.isBlank()) {
             cmd.add(stagingDir + File.separator + baseName + ".%(ext)s");
@@ -36,12 +56,25 @@ public class YtDlpCommandBuilder {
             cmd.add(stagingDir + File.separator + "raw_%(id)s___%(title)s.%(ext)s");
         }
         cmd.add("--no-overwrites");
+        cmd.add("--download-archive");
+        cmd.add(stagingDir + File.separator + "playlist-" + Integer.toUnsignedString(url.hashCode(), 36) + ".archive");
         cmd.add(url);
         return cmd;
     }
 
     public List<String> buildRawAudioDownloadCommand(String url, String stagingDir) {
         return buildRawAudioDownloadCommand(url, stagingDir, null);
+    }
+
+    public List<String> buildPlaylistVideoIdCommand(String playlistUrl) {
+        List<String> cmd = new ArrayList<>();
+        cmd.add(binaryResolver.resolveYtDlpPath());
+        cmd.add("--flat-playlist");
+        cmd.add("--no-warnings");
+        cmd.add("--print");
+        cmd.add("%(id)s");
+        cmd.add(playlistUrl);
+        return cmd;
     }
 
     public List<String> buildSingleSongCommand(String url, String outputDir) {

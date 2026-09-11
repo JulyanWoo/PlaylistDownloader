@@ -198,6 +198,24 @@ public class DownloadCardFactory {
         return card;
     }
 
+    public static VBox createFailedCard(String title, String message) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("download-card");
+        HBox topRow = new HBox(12);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+        StackPane artBox = createCardCoverBox(null, 44, "mdi2a-alert-circle", "#ef4444");
+        VBox titleBox = new VBox(3);
+        Label titleLbl = new Label(title != null ? title : "Playlist incompleta");
+        titleLbl.getStyleClass().add("card-title-text");
+        Label statusLbl = new Label(message != null ? message : "Descarga incompleta");
+        statusLbl.getStyleClass().add("badge-failed");
+        statusLbl.setWrapText(true);
+        titleBox.getChildren().addAll(titleLbl, statusLbl);
+        topRow.getChildren().addAll(artBox, titleBox);
+        card.getChildren().add(topRow);
+        return card;
+    }
+
     public static StackPane createCardCoverBox(String urlOrTitle, double size, String defaultIconLiteral, String iconColorHex) {
         StackPane artBox = new StackPane();
         artBox.setPrefSize(size, size);

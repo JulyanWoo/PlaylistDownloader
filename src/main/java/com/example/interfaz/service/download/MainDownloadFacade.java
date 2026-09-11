@@ -91,7 +91,11 @@ public class MainDownloadFacade implements AutoCloseable {
                     progressController.togglePauseResumeButtons(event.isPaused());
                 }
                 if (!event.isDownloading() && progressController != null && downloadCoordinator.isQueueEmpty()) {
-                    progressController.markDownloadCompleted();
+                    if (downloadCoordinator.wasLastRunSuccessful()) {
+                        progressController.markDownloadCompleted();
+                    } else {
+                        progressController.markDownloadFailed("La descarga se detuvo por un error no recuperable. El progreso procesado quedó guardado.");
+                    }
                     progressController.togglePauseResumeButtons(false);
                 }
             }));
