@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -139,6 +140,12 @@ public class LibraryAnalyzerService implements AutoCloseable {
         } catch (IOException e) {
             LOGGER.error("Error traversing music directory: {}", folderPath, e);
         }
+
+        audioFiles.sort(Comparator.comparing(
+                path -> path.getFileName().toString(),
+                String.CASE_INSENSITIVE_ORDER
+        ));
+        metadataReader.primeKnownArtists(audioFiles);
 
         long totalFiles = audioFiles.size();
         List<SongFile> processedSongs = new ArrayList<>();

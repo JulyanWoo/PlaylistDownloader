@@ -4,6 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
@@ -18,6 +23,7 @@ import org.jaudiotagger.tag.TagException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.example.interfaz.model.analyzer.ParsedTrackName;
 import com.example.interfaz.model.analyzer.SongFile;
 
 public class SongMetadataReader {
@@ -25,6 +31,7 @@ public class SongMetadataReader {
     private static final Logger LOGGER = LoggerFactory.getLogger(SongMetadataReader.class);
     private final SongNameNormalizer normalizer;
     private final TitleParserService titleParser;
+    private final Set<String> knownArtistKeys = new HashSet<>();
 
     public SongMetadataReader() {
         this.normalizer = new SongNameNormalizer();
@@ -34,6 +41,36 @@ public class SongMetadataReader {
     public SongMetadataReader(SongNameNormalizer normalizer) {
         this.normalizer = normalizer != null ? normalizer : new SongNameNormalizer();
         this.titleParser = new TitleParserService();
+    }
+
+    public void primeKnownArtists(List<Path> audioFiles) {
+        knownArtistKeys.clear();
+        if (audioFiles == null || audioFiles.isEmpty()) {
+            return;
+        }
+
+        Map<String, Integer> occurrences = new HashMap<>();
+        for (Path audioFile : audioFiles) {
+            if (audioFile == null || audioFile.getFileName() == null) {
+                continue;
+            }
+
+            ParsedTrackName parsed = titleParser.parse(audioFile.getFileName().toString());
+            if (parsed.artist().isBlank()) {
+                continue;
+            }
+
+            String artistKey = titleParser.artistKey(parsed.artist());
+            if (!artistKey.isBlank()) {
+                occurrences.merge(artistKey, 1, Integer::sum);
+            }
+        }
+
+        occurrences.forEach((artistKey, count) -> {
+            if (count >= 2) {
+                knownArtistKeys.add(artistKey);
+            }
+        });
     }
 
     public SongFile readMetadata(Path path) {
@@ -73,15 +110,19 @@ public class SongMetadataReader {
             LOGGER.debug("Could not read tags for file: {} - {}", fileName, e.getMessage());
         }
 
-        String rawNameForNormalization = (title != null && !title.trim().isEmpty())
-                ? title
-                : titleParser.parse(fileName).title();
+        ParsedTrackName parsedName = titleParser.parse(fileName, knownArtistKeys);
 
         if (title == null || title.trim().isEmpty()) {
-            title = titleParser.parse(fileName).title();
+            title = parsedName.title();
+        }
+        if (artist == null || artist.trim().isEmpty()) {
+            artist = parsedName.artist();
+        }
+        if (artist != null && !artist.trim().isEmpty()) {
+            knownArtistKeys.add(titleParser.artistKey(artist));
         }
 
-        String normalizedName = normalizer.normalize(rawNameForNormalization);
+        String normalizedName = normalizer.normalize(title);
 
         return new SongFile(path, fileName, normalizedName, title, artist, album, duration, size, bitrate, format);
     }
