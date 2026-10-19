@@ -23,7 +23,6 @@ public class SongNameNormalizer {
 
         String cleaned = inputName;
 
-        // Remove extension if present
         int lastDotIndex = cleaned.lastIndexOf('.');
         if (lastDotIndex > 0) {
             cleaned = cleaned.substring(0, lastDotIndex);
@@ -31,18 +30,14 @@ public class SongNameNormalizer {
 
         cleaned = cleaned.toLowerCase();
 
-        // Remove noise words
         for (String noise : NOISE_WORDS) {
             cleaned = cleaned.replace(noise, "");
         }
 
-        // Remove brackets and symbols
         cleaned = BRACKETS_AND_SYMBOLS.matcher(cleaned).replaceAll(" ");
 
-        // Remove remaining non-alphanumeric characters except spaces
         cleaned = NON_ALPHANUMERIC.matcher(cleaned).replaceAll(" ");
 
-        // Collapse multiple spaces and trim
         cleaned = MULTIPLE_SPACES.matcher(cleaned).replaceAll(" ").trim();
 
         return cleaned;

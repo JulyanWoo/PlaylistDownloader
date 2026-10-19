@@ -1,71 +1,74 @@
-target/
+# Maven and Java build output
+/target/
+/build/
+/dist/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 
-### IntelliJ IDEA ###
+# IDE and operating-system files
 .idea/
-*.iws
+.vscode/
 *.iml
+*.iws
 *.ipr
-/installer/
-
-### Eclipse ###
-.apt_generated
+.apt_generated/
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
-
-### NetBeans ###
+.sts4-cache/
 /nbproject/private/
 /nbbuild/
-/dist/
-/nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
 desktop.ini
 
-# Logs y dumps
-logs/
+# Python development and generated training data
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+tools/language-model/datasets/openlid-four-language.csv
+tools/language-model/datasets/openlid-four-language-*.csv
+tools/language-model/data/music4all-raw/
+tools/language-model/data/music-real.csv
+tools/language-model/build-*/
+tools/language-model/build/
+src/main/resources/models/language-chargram-v1.bin
+src/main/resources/models/language-chargram-v1.tsv
+
+# Local secrets and user-specific runtime configuration
+.env
+.env.*
+!.env.example
+user-config.properties
+/config/*.json
+
+# Local application state, downloads, and generated artifacts
+/logs/
 *.log
 hs_err_pid*
 replay_pid*
 *.jfr
 *.hprof
-
-# Configuración local y estado en tiempo de ejecución
-user-config.properties
-config/*.json
-.duplicates/
-.quarantine-idioma/
-
-# Salidas locales
-out/
-
-# Maven artefacto temporal
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+/.duplicates/
+/.quarantine-idioma/
+/downloads/
+/out/
+/output/
+/installer/
+**/cookies.txt
 dependency-reduced-pom.xml
 
-# Dependencias externas locales
+# External binaries kept outside source control
 Libs/
-
-# Corpus and generated artifacts used only during local language-model training
-tools/language-model/datasets/openlid-four-language.csv
-tools/language-model/data/music4all-raw/
-tools/language-model/data/music-real.csv
-tools/language-model/build-*/
-tools/language-model/build-music-comparison/
+src/main/Libs/
