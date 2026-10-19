@@ -29,9 +29,6 @@ New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Copy-Item "target\PlaylistDownloader.jar" -Destination $inputDir
-if (Test-Path "src\main\Libs") {
-    Copy-Item -Path "src\main\Libs" -Destination "$inputDir\Libs" -Recurse -Force
-}
 
 Write-Host "Generando instalador (.exe) usando jpackage..." -ForegroundColor Cyan
 jpackage `
